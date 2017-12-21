@@ -1,0 +1,7 @@
+*.o
+*.so
+*.pyc
+*.db
+__pycache__
+c_modules/pkt_reader
+config.json

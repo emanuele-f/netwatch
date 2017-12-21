@@ -1,0 +1,156 @@
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #fafafa;
+}
+
+p {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.1em;
+  font-weight: 300;
+  line-height: 1.7em;
+  color: #999;
+}
+
+a, a:hover, a:focus {
+  color: inherit;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.navbar-brand {
+  margin-left: 50px;
+}
+
+#mainContent {
+  padding: 0px;
+}
+
+.starter-template {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+#netwatchNavbarTop {
+  background-color: #36474F!important;
+}
+
+#sidebar ul.elements li i {
+  margin-left: 10px;
+  margin-right: 12px;
+  width: 10px;
+  text-align: center;
+}
+
+#sidebar ul.elements li {
+  color: #999;
+}
+
+#sidebar ul.elements li.active, #sidebar ul.elements li:hover {
+  color: #fafafa;
+}
+
+#sidebar ul.elements hr {
+  border-bottom: 1px solid #526E7C;
+  width: 95%;
+}
+
+#sidebar {
+  background: #273238;
+  color: #fff;
+  padding: 0px;
+  font-family: Roboto, Helvetica Neue, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+}
+
+#sidebar .sidebar-header h3 {
+  padding: 20px;
+  padding-left: 15px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+#sidebar .sidebar-header i {
+  margin-right: 4px;
+}
+
+#sidebar ul.elements {
+  padding: 20px 0;
+}
+
+#sidebar ul p {
+  color: #fff;
+  padding: 10px;
+}
+
+#sidebar ul li a {
+  padding: 10px;
+  font-size: 1.1em;
+  display: block;
+}
+
+#sidebar ul li a:hover {
+  background: #222D32;
+}
+
+#sidebar ul li.active > a, a[aria-expanded="true"] {
+  color: #fff;
+  background: #26A59A;
+}
+
+#sidebar {
+  height: 100vh;
+}
+
+#pageContent {
+  padding-top: 20px;
+}
+
+/*
+ * Fixes for datetime picker bootstrap v4
+ */
+
+.datetimepicker td.active, .datetimepicker span.active {
+  background-image: none !important;
+  background-color: #0275d8 !important;
+}
+
+.datetimepicker .datetimepicker-months table,
+.datetimepicker .datetimepicker-years table {
+  width: 220px !important;
+}
+
+.datetimepicker .datetimepicker-months table span,
+.datetimepicker .datetimepicker-years table span {
+  padding: 2px 4px !important;
+  line-height: 30px;
+}
+
+.datetimepicker .datetimepicker-days table td {
+  padding: 10px !important;
+}
+
+.datetimepicker .datetimepicker-days {
+  padding: 6px !important;
+}
+
+.datetimepicker .datetimepicker-hours table {
+  width: 320px !important;
+}
+
+.datetimepicker .datetimepicker-hours table span {
+  width: 18% !important;
+}
+
+.datetimepicker .datetimepicker-minutes table {
+  width: 320px !important;
+}
+
+.datetimepicker .datetimepicker-minutes table span {
+  width: 18% !important;
+}
+
+.datetimepicker table td span {
+  margin: 5px 10px !important;
+  padding: 5px !important;
+  height: 35px !important;
+}

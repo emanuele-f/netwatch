@@ -1,0 +1,47 @@
+$def with (intervals_data, timestamp, resolution)
+$var page: Timeline
+
+<div class="container-fluid">
+  <div class="row" style="margin-left: 20px;">
+    <form>
+      <input type="hidden" name="ts" />
+      <input type="hidden" name="res" />
+      <div class="input-append date" id="datetimepicker">
+        <input size="16" type="text" readonly /><button type="button" class="add-on" style="margin-left:-1px;"><i class="fa fa-th icon-th"></i></button>
+      </div>
+    </form>
+  </div>
+  <div class="row">
+    <div class="container container-fluid">
+      <div class="row">
+        <div class="col col-md-12">
+          <div class="starter-template" style="width:100%">
+            <h1>Bootstrap starter template</h1>
+            <p class="lead">Use this document as a way to quickly start any new project.<br> All you get is this text and a mostly barebones HTML document.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col col-md-12">
+          <div id="timeline"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  makeDateTimePicker("datetimepicker", $timestamp, "$resolution");
+
+  var chart = d3.timeline(),
+  data = $:intervals_data ;
+
+  /* Convert to date object */
+  for(var i=0; i<data.length; i++) {
+    data[i][2] = new Date(data[i][2] * 1000);
+    data[i][3] = new Date(data[i][3] * 1000);
+  }
+
+  d3.select('#timeline').datum(data).call(chart);
+</script>
