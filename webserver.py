@@ -3,6 +3,7 @@ import web
 from presence_db import PresenceDB
 from utils.jobs import Job
 from utils.data import getDevicesData
+from utils.time import makeEndTimestamp
 import time
 import config
 import json
@@ -21,10 +22,6 @@ class MyApplication(web.application):
 def sendJsonData(data):
   web.header('Content-Type', 'application/json')
   return json.dumps(data, ensure_ascii=True)
-
-def res2seconds(res):
-  # TODO handle res -> bound functions (working with local time now)
-  return 20*60
 
 class timeline:
   def GET(self):
@@ -46,12 +43,12 @@ class timeline:
 
     if timestamp == "now":
       ts_end = time.time()
-      ts_start = ts_end - res2seconds(resolution)
+      ts_start = ts_end - 20 * 60
     else:
       ts_start = int(timestamp)
-      ts_end = ts_start + res2seconds(resolution)
+      ts_end = makeEndTimestamp(ts_start, resolution)
 
-    presence_data = presence_db.query(ts_start, ts_end)
+    presence_data = presence_db.query(ts_start, ts_end, resolution=resolution)
     configured_devices = config.getConfiguredDevices()
 
     data = []
@@ -62,13 +59,11 @@ class timeline:
         name = configured_devices[device]["custom_name"]
 
       for interval in intervals:
-        # Ignore empty intervals
-        if interval[1] > interval[0]:
-          data.append((name, "", interval[0], interval[1]))
+        data.append((name, "", interval[0], interval[1], device))
 
     data.sort()
 
-    return template_render.timeline(json.dumps(data, ensure_ascii=True), timestamp, resolution)
+    return template_render.timeline(json.dumps(data, ensure_ascii=True), ts_start, ts_end, resolution)
 
 class devices:
   def GET(self):

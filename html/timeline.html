@@ -1,5 +1,6 @@
-$def with (intervals_data, timestamp, resolution)
+$def with (intervals_data, timestamp, timestamp_end, resolution)
 $var page: Timeline
+$ time_format = "%d %b" if (resolution == "24h" or resolution == "1M") else "%H:%M"
 
 <div class="container-fluid">
   <div class="row" style="margin-left: 20px;">
@@ -34,8 +35,18 @@ $var page: Timeline
 <script>
   makeDateTimePicker("datetimepicker", $timestamp, "$resolution");
 
-  var chart = d3.timeline(),
+  var chart = d3.timeline();
   data = $:intervals_data ;
+
+  /* TODO show no data screen */
+  if(data.length) {
+    chart.dates([dateTolocaldate(new Date($timestamp * 1000)), dateTolocaldate(new Date($timestamp_end * 1000))]);
+    chart.tooltip_render(function(d, i) {
+      var format = d3.isoParse.wrap(d3.timeFormat("$time_format"));
+      return '<b>' + d[4] + '</b><hr style="margin: 2px 0 2px 0">' +
+          format(d[2]) + ' - ' + format(d[3]);
+    });
+  }
 
   /* Convert to date object */
   for(var i=0; i<data.length; i++) {

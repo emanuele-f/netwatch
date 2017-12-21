@@ -226,6 +226,16 @@ function translate(x, y) {
 }
 
 var timeline = function() {
+    function tooltip_html(d,i) {
+        //var format = (d)=>d3.timeFormat("%Y-%m-%d")(d3.isoParse(d));
+        var format = d3.isoParse.wrap(d3.timeFormat("%Y-%m-%d"));
+//        var format = compose(d3.isoParse, d3.timeFormat("%Y-%m-%d"));
+		return  '<b>'+ names(d) + '</b>' + 
+                '<hr style="margin: 2px 0 2px 0">' +
+                format(starts(d)) + ' - ' + format(ends(d)) + '<br>' +
+                durationFormat(starts(d), ends(d));
+    }
+
     var colors = google_colors,
         padding = 5,
         reversed = false,
@@ -236,7 +246,8 @@ var timeline = function() {
         labels = f(0),
         names  = f(1),
         starts = f(2),
-        ends   = f(3);
+        ends   = f(3),
+        tooltip_render = tooltip_html;
 
     function trim_text(d, i) {
         var task = d3.select(this.parentNode),
@@ -260,7 +271,7 @@ var timeline = function() {
         var 
             data = selection.datum(),
             rows = d3.map(data, labels).keys(),
-            tip = new tooltip(tooltip_html),
+            tip = new tooltip(tooltip_render),
             cScale = d3.scaleOrdinal(colors);
 
         dates = dates || [d3.min(data, starts), d3.max(data, ends)];
@@ -352,18 +363,9 @@ var timeline = function() {
     chart.padding  = function(_) { return arguments.length? (padding = _, chart): padding; };
     chart.reversed = function(_) { return arguments.length? (reversed = _, chart): reversed; };
     chart.duration = function(_) { return arguments.length? (duration = _, chart): duration; };
+    chart.tooltip_render  = function(_) { return arguments.length? (tooltip_render = _, chart): tooltip_render; };
 
     return chart;
-
-    function tooltip_html(d,i) {
-        //var format = (d)=>d3.timeFormat("%Y-%m-%d")(d3.isoParse(d));
-        var format = d3.isoParse.wrap(d3.timeFormat("%Y-%m-%d"));
-//        var format = compose(d3.isoParse, d3.timeFormat("%Y-%m-%d"));
-		return  '<b>'+ names(d) + '</b>' + 
-                '<hr style="margin: 2px 0 2px 0">' +
-                format(starts(d)) + ' - ' + format(ends(d)) + '<br>' +
-                durationFormat(starts(d), ends(d));
-    }
 };
 
 exports.timeline = timeline;

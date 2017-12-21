@@ -4,7 +4,7 @@ function dateZeroHour(dt) {
   return dt;
 }
 
-function evtDateToLocalDate(ev_dt) {
+function dateTolocaldate(ev_dt) {
   var dt = new Date(ev_dt);
   var ts_local = dt.getTime() + new Date().getTimezoneOffset() * 60 * 1000;
   return new Date(ts_local);
@@ -45,30 +45,30 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
     endDate: new Date(),
     startView: startView,
   }).on('changeYear', function(ev) {
-    var dt = evtDateToLocalDate(ev.date.valueOf());
+    var dt = dateTolocaldate(ev.date.valueOf());
 
     dateZeroHour(dt);
     dt.setMonth(0, 1);
     submitTimeframe(dt, "1M");
   }).on('changeMonth', function(ev) {
-    var dt = evtDateToLocalDate(ev.date.valueOf());
+    var dt = dateTolocaldate(ev.date.valueOf());
 
     dateZeroHour(dt);
     dt.setMonth(dt.getMonth(), 1);
     submitTimeframe(dt, "24h");
   }).on('changeDay', function(ev) {
-    var dt = evtDateToLocalDate(ev.date.valueOf());
+    var dt = dateTolocaldate(ev.date.valueOf());
 
     submitTimeframe(dateZeroHour(dt), "1h");
   }).on('changeHour', function(ev) {
-    var dt = evtDateToLocalDate(ev.date.valueOf());
+    var dt = dateTolocaldate(ev.date.valueOf());
 
     dt.setMinutes(0);
     dt.setSeconds(0);
     dt.setMilliseconds(0);
     submitTimeframe(dt, "15m");
   }).on('changeMinute', function(ev) {
-    var dt = evtDateToLocalDate(ev.date.valueOf());
+    var dt = dateTolocaldate(ev.date.valueOf());
     changing_minute = true;
 
     dt.setSeconds(0);

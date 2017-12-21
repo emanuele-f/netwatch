@@ -18,7 +18,7 @@ class PresenceDB():
     self.cursor.execute("""CREATE INDEX IF NOT EXISTS idx_presence_timestamp ON presence (timestamp)""")
     self.conn.commit()
 
-  def _getIntervals(self, devices_to_tstamp):
+  def _getIntervals(self, devices_to_tstamp, interval_edge):
     hosts_intervals = {}
 
     for device, tstamps in devices_to_tstamp.iteritems():      
@@ -32,7 +32,7 @@ class PresenceDB():
           interval_start = point
           interval_end = point
         else:
-          if (point - interval_end) > RESOLUTION:
+          if (point - interval_end) > interval_edge:
             if interval_end >= interval_start:
               intervals.append((interval_start, interval_end))
             interval_start = point
@@ -70,17 +70,33 @@ class PresenceDB():
 
     self.conn.commit()
 
-  def query(self, tstamp_start, tstamp_end, device_filter=None):
+  def query(self, tstamp_start, tstamp_end, device_filter=None, resolution=None):
     q = "SELECT * FROM presence WHERE timestamp >= ? AND timestamp <= ?"
     params = [tstamp_start, tstamp_end]
+    interval_edge = RESOLUTION
 
     if device_filter:
       q = q + " AND mac = ?"
       params.append(self._deviceToKey(device_filter))
 
+    if resolution == "15m":
+      q = q + " GROUP BY timestamp / 300"
+      interval_edge = 300
+    elif resolution == "1h":
+      q = q + " GROUP BY strftime('%H', datetime(timestamp, 'unixepoch')), mac"
+      interval_edge = 3600
+    elif resolution == "24h":
+      q = q + " GROUP BY strftime('%m-%d', datetime(timestamp, 'unixepoch')), mac"
+      interval_edge = 86400
+    elif resolution == "1M":
+      q = q + " GROUP BY strftime('%Y-%m', datetime(timestamp, 'unixepoch')), mac"
+      interval_edge = 2678400
+    # print(q, params)
+
     res = self.cursor.execute(q, params)
     devices_to_tstamp = self._groupByDevice(res)
-    return self._getIntervals(devices_to_tstamp)
+    # print(devices_to_tstamp)
+    return self._getIntervals(devices_to_tstamp, interval_edge)
 
 if __name__ == "__main__":
   import time

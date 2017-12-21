@@ -7,20 +7,18 @@
 
 # TODO
 # 1.0
-- Map device mac to name
 - Device info edit
 - Handle device ping
 - Time range selector
 - Fix time range: must show start also if no data
+- Fix single point range hidden
+- Arp scanner
 - Last ip show
 - Handle status
-- Handle empty devices timeline
 - Unknown devices
-- Wrap into a single script
 - Handle login
 - Setting to ping unknown devices
-- Handle DHCP name interpreter
-- Minimal caching on the fifo writes
+- Minimal caching on the queue writes
 - People configuration
 - People timeline
 - Handle about
