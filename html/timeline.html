@@ -1,6 +1,8 @@
 $def with (intervals_data, timestamp, timestamp_end, resolution)
 $var page: Timeline
-$ time_format = "%d %b" if (resolution == "24h" or resolution == "1M") else "%H:%M"
+$ time_format = "%d %b %H:%M" if (resolution == "24h" or resolution == "1M") else "%H:%M"
+$ colors = '["#4285f4",]' if (resolution != "1m") else '["#db4437",]'
+$ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
 
 <div class="container-fluid">
   <div class="row" style="margin-left: 20px;">
@@ -40,11 +42,14 @@ $ time_format = "%d %b" if (resolution == "24h" or resolution == "1M") else "%H:
 
   /* TODO show no data screen */
   if(data.length) {
-    chart.dates([dateTolocaldate(new Date($timestamp * 1000)), dateTolocaldate(new Date($timestamp_end * 1000))]);
+    chart.dates([new Date($timestamp * 1000), new Date($timestamp_end * 1000)]);
+    chart.colors($:colors);
     chart.tooltip_render(function(d, i) {
       var format = d3.isoParse.wrap(d3.timeFormat("$time_format"));
-      return '<b>' + d[4] + '</b><hr style="margin: 2px 0 2px 0">' +
-          format(d[2]) + ' - ' + format(d[3]);
+      var dstart = format(d[2]);
+      var dend = format(d[3]);
+      return '<b>$view_label</b><hr style="margin: 2px 0 2px 0">' +
+          ((dstart != dend) ? (dstart + ' - ' + dend) : dstart);
     });
   }
 

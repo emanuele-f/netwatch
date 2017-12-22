@@ -28,7 +28,6 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
 
   var res2view = {
     "1m": 0,
-    "15m": 0,
     "1h": 1,
     "24h": 2,
     "1M": 3,
@@ -66,7 +65,7 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
     dt.setMinutes(0);
     dt.setSeconds(0);
     dt.setMilliseconds(0);
-    submitTimeframe(dt, "15m");
+    submitTimeframe(dt, "1m");
   }).on('changeMinute', function(ev) {
     var dt = dateTolocaldate(ev.date.valueOf());
     changing_minute = true;

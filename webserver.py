@@ -29,7 +29,7 @@ class timeline:
 
     # TODO handle now
     timestamp = "now"
-    resolution = "20m"
+    resolution = "1m"
 
     try:
       timestamp = params.ts

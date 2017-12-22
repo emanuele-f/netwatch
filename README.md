@@ -9,9 +9,7 @@
 # 1.0
 - Device info edit
 - Handle device ping
-- Time range selector
-- Fix time range: must show start also if no data
-- Fix single point range hidden
+- Add no data view
 - Arp scanner
 - Last ip show
 - Handle status

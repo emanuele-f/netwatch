@@ -276,6 +276,31 @@ var timeline = function() {
 
         dates = dates || [d3.min(data, starts), d3.max(data, ends)];
 
+        // Work with single points: give rect some syntetic width
+        var trange = dates[1] - dates[0];
+        var min_perc_msecs = 0.002;
+        var min_msecs = trange * min_perc_msecs;
+        var half_min_msecs = min_msecs * 0.5;
+        //console.log(min_msecs / 1000);
+
+        function starts_min_width(d) {
+            var start_d = starts(d);
+            var end_d = ends(d);
+            var rv = ((end_d - start_d) < min_msecs) ? (new Date(start_d - half_min_msecs)) : start_d;
+            //console.log("start", start_d, rv);
+
+            return rv;
+        }
+
+        function ends_min_width(d) {
+            var start_d = starts(d);
+            var end_d = ends(d);
+            var rv = ((end_d - start_d) < min_msecs) ? (new Date(end_d - (- half_min_msecs))) : end_d;
+            //console.log("End: ", d[0], end_d, starts_min_width(d), "->", rv);
+
+            return rv;
+        }
+
         selection.each(function(data){
             var width = const_width || this.getBoundingClientRect().width,
                 height = rows.length * (getFontSize(this) + 4*padding),
@@ -342,9 +367,9 @@ var timeline = function() {
 
             tasks
                 .transition().duration(duration)
-                .attr("transform", d => translate(xScale(starts(d)), yScale(labels(d))))
+                .attr("transform", d => translate(xScale(starts_min_width(d)), yScale(labels(d))))
                 .selectAll('rect')
-                    .attr('width', d => xScale(ends(d)) - xScale(starts(d)))
+                    .attr('width', d => xScale(ends_min_width(d)) - xScale(starts_min_width(d)))
                 .on('start', trim_text);
 
             if(today) 

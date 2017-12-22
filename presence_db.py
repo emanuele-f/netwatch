@@ -29,14 +29,14 @@ class PresenceDB():
 
       for point in tstamps:
         if not interval_start:
-          interval_start = point
-          interval_end = point
+          interval_start = point[0]
+          interval_end = point[1]
         else:
-          if (point - interval_end) > interval_edge:
+          if (point[0] - interval_end) > interval_edge:
             if interval_end >= interval_start:
               intervals.append((interval_start, interval_end))
-            interval_start = point
-          interval_end = point
+            interval_start = point[0]
+          interval_end = point[1]
 
       if tstamps:
         intervals.append((interval_start, interval_end))
@@ -48,13 +48,13 @@ class PresenceDB():
     devices_to_tstamp = {}
 
     for row in res:
-      tstamp, device_key = row
+      tstamp_start, tstamp_end, device_key = row
       device = self._keyToDevice(device_key)
 
       if not device in devices_to_tstamp:
         devices_to_tstamp[device] = []
 
-      devices_to_tstamp[device].append(tstamp)
+      devices_to_tstamp[device].append((tstamp_start, tstamp_end))
     return devices_to_tstamp
 
   def _deviceToKey(self, device):
@@ -71,7 +71,8 @@ class PresenceDB():
     self.conn.commit()
 
   def query(self, tstamp_start, tstamp_end, device_filter=None, resolution=None):
-    q = "SELECT * FROM presence WHERE timestamp >= ? AND timestamp <= ?"
+    q = " FROM presence WHERE timestamp >= ? AND timestamp <= ?"
+    what = "MIN(timestamp), MAX(timestamp), mac"
     params = [tstamp_start, tstamp_end]
     interval_edge = RESOLUTION
 
@@ -79,10 +80,7 @@ class PresenceDB():
       q = q + " AND mac = ?"
       params.append(self._deviceToKey(device_filter))
 
-    if resolution == "15m":
-      q = q + " GROUP BY timestamp / 300"
-      interval_edge = 300
-    elif resolution == "1h":
+    if resolution == "1h":
       q = q + " GROUP BY strftime('%H', datetime(timestamp, 'unixepoch')), mac"
       interval_edge = 3600
     elif resolution == "24h":
@@ -91,6 +89,10 @@ class PresenceDB():
     elif resolution == "1M":
       q = q + " GROUP BY strftime('%Y-%m', datetime(timestamp, 'unixepoch')), mac"
       interval_edge = 2678400
+    else:
+      q = q + "GROUP BY timestamp, mac"
+
+    q = "SELECT " + what + q
     # print(q, params)
 
     res = self.cursor.execute(q, params)
