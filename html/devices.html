@@ -37,6 +37,40 @@ $var page: Devices
   </div>
 </div>
 
+<div class="modal fade" id="editDeviceDialog" tabindex="-1" role="dialog" aria-labelledby="editDeviceLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editDeviceLabel">Edit device <span id="macToEditPlaceholder"></span></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form method="post">
+        <div class="modal-body">
+          <input type="hidden" name="action" value="edit" />
+          <input type="hidden" id="macToEdit" name="mac" />
+          <div class="form-group">
+            <label for="customName">Custom name</label>
+            <input id="macToEdit_name" type="text" class="form-control" id="customName" name="custom_name" placeholder="A custom name for the device"/>
+          </div>
+          <div class="form-check">
+            <label class="form-check-label">
+              <input id="macToEdit_ping" type="checkbox" class="form-check-input" name="active_ping" aria-describedby="activePingHelp2">
+              Active ping
+            </label>
+            <small id="activePingHelp2" class="form-text text-muted">Can send ping requests to verify device status.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Edit device</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="deleteDeviceDialog" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
@@ -116,7 +150,11 @@ $var page: Devices
       title: 'Actions',
       class: 'text-center',
       formatter: function(value, row, index) {
-        return `<a href="#" class="btn btn-primary btn-sm"><i class="fa fa-pencil"></i></a>
+        return `<a href="#editDeviceDialog" data-toggle="modal" data-target="#editDeviceDialog"
+          class="btn btn-primary btn-sm"
+          onclick="$$('#macToEditPlaceholder').html('` + row.mac + `'); $$('#macToEdit').val('` + row.mac + `');\
+           $$('#macToEdit_name').val('` + row.name + `'); $$('#macToEdit_ping').prop('checked', ` + row.active_ping + `) ">
+          <i class="fa fa-pencil"></i></a>
         <a href="#deleteDeviceDialog" data-toggle="modal" data-target="#deleteDeviceDialog"
           class="btn btn-danger btn-sm"
           onclick="$$('#macToDeletePlaceholder').html('` + row.mac + `'); $$('#macToDelete').val('` + row.mac + `');">

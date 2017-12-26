@@ -84,8 +84,12 @@ class devices:
     data = web.input()
     action = data.action
     mac = data.mac
+    overwrite = False
 
-    if action == "add":
+    if (action == "add") or (action == "edit"):
+      if action == "edit":
+        overwrite = True
+
       custom_name = data.custom_name
       active_ping = False
 
@@ -94,7 +98,7 @@ class devices:
         active_ping = data.active_ping and True
       except AttributeError: pass
 
-      config.addDevice(mac, custom_name, active_ping)
+      config.addDevice(mac, custom_name, active_ping, overwrite=overwrite)
     elif action == "delete":
       config.deleteDevice(mac)
 

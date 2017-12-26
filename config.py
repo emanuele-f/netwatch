@@ -45,10 +45,10 @@ def _writeConfigNode(root, key, value, overwrite=True):
   _writeData(data)
   return True
 
-def addDevice(mac, custom_name, ping_device):
+def addDevice(mac, custom_name, ping_device, overwrite=False):
   data = _loadData()
 
-  if mac in data[DEVICES_CONFIG_SECTION]:
+  if (not overwrite) and (mac in data[DEVICES_CONFIG_SECTION]):
     # device exists
     return False
 
