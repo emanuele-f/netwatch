@@ -5,7 +5,7 @@ function dateZeroHour(dt) {
 }
 
 function dateTolocaldate(ev_dt, sign) {
-  sign = sign || 1;
+  sign = typeof sign !== "undefined" ? sign : 1;
   var dt = new Date(ev_dt);
   var ts_local = dt.getTime() + sign * new Date().getTimezoneOffset() * 60 * 1000;
   return new Date(ts_local);
@@ -16,6 +16,16 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
   var form = $(selector).closest("form");
   var changing_minute = false;
   var dt_input = $(selector).find("input");
+  var res_label = form.find("[data-show-res]");
+
+  var res2label = {
+    "1m": "One Hour",
+    "1h": "One Day",
+    "24h": "One Month",
+    "1M": "One Year",
+  };
+
+  res_label.val(res2label[resolution]);
 
   var submitTimeframe = function(dt, res) {
     var ts_input = form.find("input[name='ts']");
@@ -24,7 +34,8 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
 
     ts_input.val(ts);
     res_input.val(res);
-    form.submit();
+    $(selector).datetimepicker("update", dateTolocaldate(dt, -1));
+    res_label.val(res2label[res]);
   };
 
   var res2view = {

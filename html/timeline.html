@@ -7,11 +7,13 @@ $ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
 <div class="container-fluid">
   <div class="row" style="margin-left: 20px;">
     <form>
-      <input type="hidden" name="ts" />
-      <input type="hidden" name="res" />
-      <div class="input-append date" id="datetimepicker">
-        <input size="16" type="text" readonly /><button type="button" class="add-on" style="margin-left:-1px;"><i class="fa fa-th icon-th"></i></button>
+      <input type="hidden" name="ts" value="$timestamp" />
+      <input type="hidden" name="res" value="$resolution" />
+      <div class="input-append date" id="datetimepicker" style="display:inline;">
+        <input size="16" type="text" readonly/><button type="button" class="add-on" style="margin-left:-1px;"><i class="fa fa-th icon-th"></i></button>
       </div>
+      <input size="8" data-show-res="" readonly/>
+      <button class="btn btn-primary">Go</button>
     </form>
   </div>
   <div class="row">
@@ -47,7 +49,10 @@ $ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
     chart.min_width($chart_min_time * 1000);
 
     chart.on_item_click(function(d, i) {
-      picker.drillDown(d[2], -1);
+      if ("$resolution" != "1m") {
+        picker.drillDown(d[2], 0);
+        $$("#datetimepicker").closest("form").submit();
+      }
     });
 
     chart.tooltip_render(function(d, i) {
