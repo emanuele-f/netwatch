@@ -45,7 +45,6 @@ struct dhcp_boot_request {
 #define DHCP_CHADDR_LEN 16
 #define DHCP_SNAME_LEN 64
 #define DHCP_FILE_LEN 128
-#define DHCP_VEND_LEN 308
 #define DHCP_OPTION_MAGIC_NUMBER  0x63825363
 #define DHCP_MSGTYPE_BOOT_REQUEST 0x1
 #define DHCP_MSGTYPE_BOOT_REPLY 0x2
@@ -86,5 +85,5 @@ struct dhcp_packet_t {
   uint8_t sname[DHCP_SNAME_LEN]; /* 44 */
   uint8_t file[DHCP_FILE_LEN]; /* 108 */
   uint32_t magic; /* 236 */
-  uint8_t options[DHCP_VEND_LEN];
+  uint8_t options[];
 } __attribute__((packed));

@@ -158,13 +158,15 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
 
           if ((ip_header->ip_p == IP_PROTO_UDP) && (len >= sizeof(struct udphdr))) {
             udp_header = (struct udphdr *)((u_char *)ip_header + iphdr_len);
-            len -= sizeof(struct udphdr);
+            // udp header len is udp header + data
+            //len -= sizeof(struct udphdr);
 
 #ifdef DEBUG
-            printf("UDP: %d -> %d [%d len]\n", ntohs(udp_header->sport), ntohs(udp_header->dport), len);
+            printf("UDP: %d -> %d [%d len][%d udp len]\n", ntohs(udp_header->sport), ntohs(udp_header->dport), len, ntohs(udp_header->len));
 #endif
 
-            if ((ntohs(udp_header->sport) == 68) && (ntohs(udp_header->dport) == 67) && (udp_header->len >= sizeof(struct dhcp_packet_t))) {
+            if ((ntohs(udp_header->sport) == 68) && (ntohs(udp_header->dport) == 67) &&
+                    (len >= ntohs(udp_header->len)) && (ntohs(udp_header->len) >= sizeof(struct dhcp_packet_t))) {
               struct dhcp_packet_t *dhcp = (struct dhcp_packet_t *) ((u_char *)udp_header + sizeof(struct udphdr));
 
               if((dhcp->magic == htonl(DHCP_OPTION_MAGIC_NUMBER))
@@ -173,7 +175,7 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
                 struct dhcp_boot_request request = {0};
                 int i = 0;
 
-                while(i < DHCP_VEND_LEN) {
+                while(i < len) {
                   u_int8_t opt = dhcp->options[i];
                   u_int8_t optlen = dhcp->options[i+1];
                   const u_char *optval = &dhcp->options[i+2];
@@ -208,8 +210,10 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
 #ifdef DEBUG
                   printf("DHCP REQUEST: %s %s\n", ip_buf, request.host_name_ptr ? name_buf : "");
 #endif
-                }
-              }
+                } else
+                  return 0;
+              } else
+               return 0;
             }
           }
 
@@ -355,7 +359,7 @@ int main(int argc, char *argv[]) {
       name_buf[0] = '\0';
 
       if (_read_packet_info(dev, mac_buf, ip_buf, name_buf)) {
-        printf("Seen %s as %s [name=%s]\n", mac_buf, ip_buf, name_buf);
+        printf("+ Seen %s as %s [name=%s]\n", mac_buf, ip_buf, name_buf);
       }
     }
 
