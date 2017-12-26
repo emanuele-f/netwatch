@@ -23,6 +23,16 @@ def sendJsonData(data):
   web.header('Content-Type', 'application/json')
   return json.dumps(data, ensure_ascii=True)
 
+def resToMinTime(res):
+  if res == "1M":
+    return 86400*31
+  elif res == "24h":
+    return 86400
+  elif res == "1h":
+    return 120
+  else:
+    return 120
+
 class timeline:
   def GET(self):
     params = web.input()
@@ -50,6 +60,7 @@ class timeline:
 
     presence_data = presence_db.query(ts_start, ts_end, resolution=resolution)
     configured_devices = config.getConfiguredDevices()
+    min_time = resToMinTime(resolution)
 
     data = []
     for device, intervals in presence_data.iteritems():
@@ -63,7 +74,7 @@ class timeline:
 
     data.sort()
 
-    return template_render.timeline(json.dumps(data, ensure_ascii=True), ts_start, ts_end, resolution)
+    return template_render.timeline(json.dumps(data, ensure_ascii=True), ts_start, ts_end, resolution, min_time)
 
 class devices:
   def GET(self):

@@ -29,14 +29,14 @@ class PresenceDB():
 
       for point in tstamps:
         if not interval_start:
-          interval_start = point[0]
-          interval_end = point[1]
+          interval_start = point
+          interval_end = point
         else:
-          if (point[0] - interval_end) > interval_edge:
+          if (point - interval_end) > interval_edge:
             if interval_end >= interval_start:
               intervals.append((interval_start, interval_end))
-            interval_start = point[0]
-          interval_end = point[1]
+            interval_start = point
+          interval_end = point
 
       if tstamps:
         intervals.append((interval_start, interval_end))
@@ -48,13 +48,13 @@ class PresenceDB():
     devices_to_tstamp = {}
 
     for row in res:
-      tstamp_start, tstamp_end, device_key = row
+      tstamp, device_key = row
       device = self._keyToDevice(device_key)
 
       if not device in devices_to_tstamp:
         devices_to_tstamp[device] = []
 
-      devices_to_tstamp[device].append((tstamp_start, tstamp_end))
+      devices_to_tstamp[device].append(int(tstamp))
     return devices_to_tstamp
 
   def _deviceToKey(self, device):
@@ -72,7 +72,7 @@ class PresenceDB():
 
   def query(self, tstamp_start, tstamp_end, device_filter=None, resolution=None):
     q = " FROM presence WHERE timestamp >= ? AND timestamp <= ?"
-    what = "MIN(timestamp), MAX(timestamp), mac"
+    time_what = "timestamp"
     params = [tstamp_start, tstamp_end]
     interval_edge = RESOLUTION
 
@@ -84,14 +84,17 @@ class PresenceDB():
       q = q + " GROUP BY strftime('%H', datetime(timestamp, 'unixepoch')), mac"
       interval_edge = 3600
     elif resolution == "24h":
+      time_what = "strftime('%s', strftime('%Y-%m-%d', timestamp, 'unixepoch'), 'utc')"
       q = q + " GROUP BY strftime('%m-%d', datetime(timestamp, 'unixepoch')), mac"
       interval_edge = 86400
     elif resolution == "1M":
+      time_what = "strftime('%s', strftime('%Y-%m-01 00:00:00', timestamp, 'unixepoch'), 'utc')"
       q = q + " GROUP BY strftime('%Y-%m', datetime(timestamp, 'unixepoch')), mac"
       interval_edge = 2678400
     else:
       q = q + "GROUP BY timestamp, mac"
 
+    what = time_what + ", mac"
     q = "SELECT " + what + q
     # print(q, params)
 

@@ -1,7 +1,7 @@
-$def with (intervals_data, timestamp, timestamp_end, resolution)
+$def with (intervals_data, timestamp, timestamp_end, resolution, chart_min_time)
 $var page: Timeline
-$ time_format = "%d %b %H:%M" if (resolution == "24h" or resolution == "1M") else "%H:%M"
-$ colors = '["#4285f4",]' if (resolution != "1m") else '["#db4437",]'
+$ time_format = "%b" if (resolution == "1M") else "%d %b" if (resolution == "24h") else "%H:%M"
+$ colors = '["#4285f4",]'
 $ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
 
 <div class="container-fluid">
@@ -44,6 +44,7 @@ $ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
   if(data.length) {
     chart.dates([new Date($timestamp * 1000), new Date($timestamp_end * 1000)]);
     chart.colors($:colors);
+    chart.min_width($chart_min_time * 1000);
     chart.tooltip_render(function(d, i) {
       var format = d3.isoParse.wrap(d3.timeFormat("$time_format"));
       var dstart = format(d[2]);
