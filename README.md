@@ -7,12 +7,9 @@
 
 # TODO
 # 1.0
-- Device info edit
 - Handle device ping
 - Add no data view
 - Arp scanner
-- Last ip show
-- Handle status
 - Unknown devices
 - Handle login
 - Setting to ping unknown devices

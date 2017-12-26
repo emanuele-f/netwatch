@@ -1,9 +1,10 @@
 #!/bin/env python2
 import web
 from presence_db import PresenceDB
+from meta_db import MetaDB
 from utils.jobs import Job
 from utils.data import getDevicesData
-from utils.time import makeEndTimestamp
+from utils.timeutils import makeEndTimestamp
 import time
 import config
 import json
@@ -48,6 +49,7 @@ class timeline:
       pass
 
     presence_db = PresenceDB()
+    meta_db = MetaDB()
     ts_start = None
     ts_end = None
 
@@ -68,6 +70,11 @@ class timeline:
 
       if device in configured_devices:
         name = configured_devices[device]["custom_name"]
+      else:
+        meta = meta_db.query(device)
+
+        if meta and meta["name"]:
+          name = meta["name"]
 
       for interval in intervals:
         data.append((name, "", interval[0], interval[1], device))
@@ -106,7 +113,8 @@ class devices:
 
 class devices_json:
   def GET(self):
-    return sendJsonData(getDevicesData())
+    meta_db = MetaDB()
+    return sendJsonData(getDevicesData(meta_db))
 
 class WebServerJob(Job):
   def __init__(self):

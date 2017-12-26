@@ -1,9 +1,9 @@
 #!/bin/env python2
 
 import sqlite3
+from utils.db import deviceToKey, keyToDevice
 
-# TODO fixme
-PRESENCE_DB = "/home/emanuele/Desktop/netwatch/presence.db"
+PRESENCE_DB = "presence.db"
 RESOLUTION = 60
 
 class PresenceDB():
@@ -49,7 +49,7 @@ class PresenceDB():
 
     for row in res:
       tstamp, device_key = row
-      device = self._keyToDevice(device_key)
+      device = keyToDevice(device_key)
 
       if not device in devices_to_tstamp:
         devices_to_tstamp[device] = []
@@ -57,15 +57,9 @@ class PresenceDB():
       devices_to_tstamp[device].append(int(tstamp))
     return devices_to_tstamp
 
-  def _deviceToKey(self, device):
-    return "".join(device.upper().split(":"))
-
-  def _keyToDevice(self, key):
-    return ":".join([key[i:i+2] for i in range(0, len(key), 2)])
-
   def insert(self, tstamp, devices):
     for device in devices:
-      device_key = self._deviceToKey(device)
+      device_key = deviceToKey(device)
       self.cursor.execute("INSERT INTO presence VALUES (?,?)", (tstamp, device_key))
 
     self.conn.commit()
@@ -78,7 +72,7 @@ class PresenceDB():
 
     if device_filter:
       q = q + " AND mac = ?"
-      params.append(self._deviceToKey(device_filter))
+      params.append(deviceToKey(device_filter))
 
     if resolution == "1h":
       q = q + " GROUP BY strftime('%H', datetime(timestamp, 'unixepoch')), mac"
@@ -92,7 +86,7 @@ class PresenceDB():
       q = q + " GROUP BY strftime('%Y-%m', datetime(timestamp, 'unixepoch')), mac"
       interval_edge = 2678400
     else:
-      q = q + "GROUP BY timestamp, mac"
+      q = q + " GROUP BY timestamp, mac"
 
     what = time_what + ", mac"
     q = "SELECT " + what + q

@@ -25,6 +25,7 @@ LOG_LEVEL = logging.DEBUG
 running = True
 log = None
 presence_db = None
+meta_db = None
 
 # Host which where active during the last time slot
 prev_hosts = {}
@@ -40,14 +41,16 @@ manager = None
 # ------------------------------------------------------------------------------
 
 class HostInfo():
-  def __init__(self, mac, ip, last_seen):
+  def __init__(self, mac, ip, last_seen, name=None):
     self.mac = mac
     self.ip = ip
     self.first_seen = last_seen
     self.last_seen = last_seen
+    self.name = name
 
-  def update(self, last_seen):
+  def update(self, last_seen, name=None):
     self.last_seen = last_seen
+    if name: self.name = name
 
 class MessageParser():
   def __init__(self, msg):
@@ -81,7 +84,7 @@ def initLogging():
 def sigHandler(signum, frame):
   global running
   global terminating
-  
+
   if running != False:
     running = False
     print("Terminating...")
@@ -101,17 +104,15 @@ def handleHost(mac, ip, seen_tstamp, host_name):
   global prev_hosts
   global next_hosts
 
-  # TODO handle host_name
-
   try:
     host = next_hosts[mac]
-    host.update(seen_tstamp)
+    host.update(seen_tstamp, host_name)
   except KeyError:
     try:
       host = prev_hosts[mac]
       host.update(seen_tstamp)
     except KeyError:
-      host = HostInfo(mac, ip, seen_tstamp)
+      host = HostInfo(mac, ip, seen_tstamp, host_name)
       log.info("[+]" + mac)
 
   next_hosts[mac] = host
@@ -121,14 +122,15 @@ def datetimeToTimestamp(dt):
 
 def insertHostsDataPoint(time_ref):
   global presence_db
+  global meta_db
   global next_hosts
 
   devices = next_hosts.keys()
   log.debug("Insert datapoint: @" + str(time_ref) + ": " + str(len(devices)) + " devices")
   presence_db.insert(time_ref, devices)
 
-  # TODO
-  #DB_COLLECTION_HOSTS_METADATA
+  for host in next_hosts.values():
+    meta_db.update(host.mac, int(host.last_seen), name=host.name, ip=host.ip)
 
 def poke_host(host, max_seconds, rv_value):
   NUM_PINGS = 5
@@ -248,9 +250,11 @@ if __name__ == "__main__":
   from packets_reader import PacketsReaderJob
   from presence_db import PresenceDB
   from webserver import WebServerJob
+  from meta_db import MetaDB
 
   log.debug("Initializing database...")
   presence_db = PresenceDB()
+  meta_db = MetaDB()
 
   log.info("Starting startup jobs...")
   manager = JobsManager()

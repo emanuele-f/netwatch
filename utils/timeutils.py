@@ -1,16 +1,16 @@
 
 from datetime import datetime, timedelta
+import calendar
+import time
 
 def dateToTimestamp(dt):
-  epoch = datetime(1970, 1, 1)
-  diff = dt - epoch
-  return int(diff.total_seconds())
+  return time.mktime(dt.timetuple())
 
 def makeEndTimestamp(ts_start, res):
   dt = datetime.fromtimestamp(ts_start)
 
   if res == "1m":
-    dt = dt + timedelta(minutes=20)
+    dt = dt + timedelta(hours=1)
   elif res == "15m":
     dt = dt + timedelta(hours=1)
   elif res == "1h":

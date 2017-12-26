@@ -132,7 +132,7 @@ $var page: Devices
       title: 'Status',
       class: 'text-center',
       formatter: function(value, row, index) {
-        return value ? `<span class="badge badge-success">Active</span>` : `<span class="badge badge-default">Offline</span>`;
+        return value=="true" ? `<span class="badge badge-success">Online</span>` : `<span class="badge badge-default">Offline</span>`;
       },
       sortable: true,
     }, {
