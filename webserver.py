@@ -29,9 +29,9 @@ def resToMinTime(res):
   elif res == "24h":
     return 86400
   elif res == "1h":
-    return 120
+    return 240
   else:
-    return 120
+    return 10
 
 class timeline:
   def GET(self):

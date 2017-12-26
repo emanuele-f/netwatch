@@ -248,7 +248,8 @@ var timeline = function() {
         starts = f(2),
         ends   = f(3),
         tooltip_render = tooltip_html,
-        min_width = 0;
+        min_width = 0,
+        on_item_click = $.noop;
 
     function trim_text(d, i) {
         var task = d3.select(this.parentNode),
@@ -343,6 +344,7 @@ var timeline = function() {
                 .attr('height', yScale.bandwidth() - 2*padding)
                 .on('mouseover', tip.show)
                 .on('mouseout', tip.hide)
+                .on("click", on_item_click)
                 .style('fill', names.wrap(cScale));
 
             tasks_enter
@@ -387,6 +389,7 @@ var timeline = function() {
     chart.duration = function(_) { return arguments.length? (duration = _, chart): duration; };
     chart.tooltip_render  = function(_) { return arguments.length? (tooltip_render = _, chart): tooltip_render; };
     chart.min_width = function(_) { return arguments.length? (min_width = _ * 1.1, chart): min_width; };
+    chart.on_item_click = function(_) { return arguments.length? (on_item_click = _, chart): on_item_click; };
 
     return chart;
 };

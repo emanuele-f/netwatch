@@ -4,9 +4,10 @@ function dateZeroHour(dt) {
   return dt;
 }
 
-function dateTolocaldate(ev_dt) {
+function dateTolocaldate(ev_dt, sign) {
+  sign = sign || 1;
   var dt = new Date(ev_dt);
-  var ts_local = dt.getTime() + new Date().getTimezoneOffset() * 60 * 1000;
+  var ts_local = dt.getTime() + sign * new Date().getTimezoneOffset() * 60 * 1000;
   return new Date(ts_local);
 }
 
@@ -24,7 +25,7 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
     ts_input.val(ts);
     res_input.val(res);
     form.submit();
-  }
+  };
 
   var res2view = {
     "1m": 0,
@@ -32,6 +33,34 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
     "24h": 2,
     "1M": 3,
   }
+
+  function drilldownHour(d, sign) {
+    var dt = dateTolocaldate(d, sign);
+
+    dt.setMinutes(0);
+    dt.setSeconds(0);
+    dt.setMilliseconds(0);
+    submitTimeframe(dt, "1m");
+  }
+
+  function drilldownDay(d, sign) {
+    var dt = dateTolocaldate(d, sign);
+    submitTimeframe(dateZeroHour(dt), "1h");
+  }
+
+  function drilldownMonth(d, sign) {
+    var dt = dateTolocaldate(d, sign);
+    dateZeroHour(dt);
+    dt.setMonth(dt.getMonth(), 1);
+    submitTimeframe(dt, "24h");
+  }
+
+  var res2click = {
+    "1m": $.noop,
+    "1h": drilldownHour,
+    "24h": drilldownDay,
+    "1M": drilldownMonth,
+  };
 
   var startView = res2view[resolution];
   var currentDate = new Date(timestamp * 1000);
@@ -50,22 +79,11 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
     dt.setMonth(0, 1);
     submitTimeframe(dt, "1M");
   }).on('changeMonth', function(ev) {
-    var dt = dateTolocaldate(ev.date.valueOf());
-
-    dateZeroHour(dt);
-    dt.setMonth(dt.getMonth(), 1);
-    submitTimeframe(dt, "24h");
+    drilldownMonth(ev.date.valueOf());
   }).on('changeDay', function(ev) {
-    var dt = dateTolocaldate(ev.date.valueOf());
-
-    submitTimeframe(dateZeroHour(dt), "1h");
+    drilldownDay(ev.date.valueOf());
   }).on('changeHour', function(ev) {
-    var dt = dateTolocaldate(ev.date.valueOf());
-
-    dt.setMinutes(0);
-    dt.setSeconds(0);
-    dt.setMilliseconds(0);
-    submitTimeframe(dt, "1m");
+    drilldownHour(ev.date.valueOf());
   }).on('changeMinute', function(ev) {
     var dt = dateTolocaldate(ev.date.valueOf());
     changing_minute = true;
@@ -78,6 +96,10 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
     if (! changing_minute)
       console.log("Now ", ev.date.valueOf());
   });
+
+  picker.drillDown = function(dt, sign) {
+    res2click[resolution](dt, sign);
+  }
 
   return picker;
 }

@@ -1,6 +1,6 @@
 $def with (intervals_data, timestamp, timestamp_end, resolution, chart_min_time)
 $var page: Timeline
-$ time_format = "%b" if (resolution == "1M") else "%d %b" if (resolution == "24h") else "%H:%M"
+$ time_format = "%b %Y" if (resolution == "1M") else "%d %b" if (resolution == "24h") else "%H:%M"
 $ colors = '["#4285f4",]'
 $ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
 
@@ -35,7 +35,7 @@ $ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
 </div>
 
 <script>
-  makeDateTimePicker("datetimepicker", $timestamp, "$resolution");
+  var picker = makeDateTimePicker("datetimepicker", $timestamp, "$resolution");
 
   var chart = d3.timeline();
   data = $:intervals_data ;
@@ -45,6 +45,11 @@ $ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
     chart.dates([new Date($timestamp * 1000), new Date($timestamp_end * 1000)]);
     chart.colors($:colors);
     chart.min_width($chart_min_time * 1000);
+
+    chart.on_item_click(function(d, i) {
+      picker.drillDown(d[2], -1);
+    });
+
     chart.tooltip_render(function(d, i) {
       var format = d3.isoParse.wrap(d3.timeFormat("$time_format"));
       var dstart = format(d[2]);
