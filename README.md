@@ -1,39 +1,59 @@
-#Dependecies
+# Netwatch
+
+Netwatch is a tool to monitor the presence of the devices of a network.
+
+Here is a list of features Netwatch provides:
+- Active/passive devices monitoring
+- Timeline data visualization of a specific time frame
+- Group the devices into people to get a per-person presence timeline
+- Automatically determine device name from network traffic
+- Manually assign a name to a device mac address
+
+In order to do its job, Netwatch uses a combination of passive and active scanning techniques.
+Active scanning is only used as fallback method to verify a device presence when
+passive scanning fails. It is nevertheless possible to disable active scanning on
+a device basis or turn off periodic active scan to have a passive-only (stealth) solution.
+
+# Dependecies
+
+In order to run Netwatch, you will need to satisfy the following dependencies:
 
 - python2
 - python2-webpy
 - python2-pysqlite
 - python2-prctl
+- python2-dev (for C modules compilation)
 
-# TODO
-# 1.0
-- Handle device ping
-- Add no data view
-- Arp scanner
-- Unknown devices
-- Handle login
-- Setting to ping unknown devices
-- Minimal caching on the queue writes
-- People configuration
-- People timeline
-- Handle about
+# Build
 
-# C modules
-The following C modules are provided:
-  - `pkt_reader.c`: reads network packets from a network interface and extract device information
-
-In order to compile them, you need to run:
+Netwatch is written in python but requires some C modules to implement the low
+level stuff. Before running Netwatch you will need to execute the following commands:
 
 ```
 cd c_modules
 make
+cd ..
 ```
-
-Python C library is required to build them.
 
 # Run
 
-`sudo ./main.py`
+After building the C modules, you can run netwatch with the following command:
 
-Root privileges are dropped to nobody:nobody as soon as the capabilities to capture from network
-interfaces are set.
+```
+sudo ./main.py
+```
+
+Root privileges privileges will be dropped to nobody:nobody as soon as the
+required linux capabilities are set.
+
+# TODO 0.1
+- Integrate device arp scan
+- Add no data view
+- Setting to scan network periodically
+- People configuration
+- People timeline
+- Handle about
+- Handle login
+
+# TODO 0.2
+- Unknown devices filter
