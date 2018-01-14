@@ -1,7 +1,21 @@
+$def with (config)
 $var page: Settings
+$ discovery_enabled = "checked" if config.getPeriodicDiscoveryEnabled() else ""
 
 <div class="container-fluid">
-  <div class="row" style="margin-left: 20px;">
-    <h4>Sorry! This page is not implemented yet!</h4>
-  </div>
+  <form method="post">
+    <div class="row">
+      <div class="form-check">
+        <label class="form-check-label">
+          <input type="checkbox" class="form-check-input" name="periodic_discovery" aria-describedby="periodicDiscovery" $discovery_enabled />
+          Enable Periodic Discovery
+        </label>
+        <small id="periodicDiscovery" class="form-text text-muted">Send periodic ARP probes to identify all the active devices of the network.</small>
+      </div>
+    </div>
+
+    <div class="row row-spaced">
+      <button type="submit" class="btn btn-primary">Apply Settings</button>
+    </div>
+  </form>
 </div>

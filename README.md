@@ -56,9 +56,7 @@ required linux capabilities are set.
 Netwatch is under the GPL 3 license.
 
 ## TODO 0.1
-- Integrate device arp scan
 - Add no data view
-- Setting to scan network periodically
 - People configuration
 - People timeline
 - Handle login

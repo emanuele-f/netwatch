@@ -23,7 +23,8 @@ import time, datetime
 import errno
 import subprocess
 import re
-from ctypes import c_char_p
+import config
+from Queue import Empty as QueueEmpty
 
 # TODO make it configurable, allow to keep privileges
 PRIVILEGE_DROP_USER = "emanuele"
@@ -43,15 +44,13 @@ running = True
 log = None
 presence_db = None
 meta_db = None
+scanner_msgqueue = None
 
 # Host which where active during the last time slot
 prev_hosts = {}
 
 # Host which are active during this time slot
 next_hosts = {}
-
-# Hosts actively poked
-poking_hosts = {}
 
 manager = None
 
@@ -149,43 +148,6 @@ def insertHostsDataPoint(time_ref):
   for host in next_hosts.values():
     meta_db.update(host.mac, int(host.last_seen), name=host.name, ip=host.ip)
 
-def poke_host(host, max_seconds, rv_value):
-  NUM_PINGS = 5
-  PINGS_INTERVAL = 5
-
-  args = ["ping", "-q", "-w", str(max_seconds), "-i", str(PINGS_INTERVAL), "-c", str(NUM_PINGS), host]
-  log.debug("Executing: " + " ".join(args))
-  output = ""
-
-  try:
-    output = subprocess.check_output(args)
-  except subprocess.CalledProcessError as e:
-    if e.returncode == 0:
-      raise
-
-  match = re.search('(\d+) received', output)
-
-  if match and len(match.groups(0)):
-    if match.groups(0)[0] != "0":
-      rv_value.value = str(int(time.time()))
-
-  rv_value.value = ""
-
-def startPoke(host, ip, max_seconds):
-  global poking_hosts
-
-  if not host in poking_hosts:
-    log.info("Poking host " + host + "...")
-    # rv_value = manager.Value(c_char_p, "")
-    # process = multiprocessing.Process(target=poke_host, args=(ip, max_seconds, rv_value))
-    # process.start()
-
-    # Start poking process
-    # poking_hosts[host] = {
-      # "rv_value": rv_value,
-      # "process": process,
-    # }
-
 def mainLoop():
   global running
   global prev_hosts
@@ -201,20 +163,12 @@ def mainLoop():
     now = int(time.time())
 
     if now >= next_slot:
-      # Stop old poking hosts
-      for host, poking in poking_hosts.iteritems():
-        process = poking["process"]
-
-        if process.is_alive():
-          log.warning("Poking process for host " + host + " is alive, killing")
-          process.terminate()
-        else:
-          if not host in next_hosts and poking["rv_value"].value:
-            host_info = prev_hosts[host]
-            host_info.update(int(poking["rv_value"].value))
-            next_hosts[host] = host_info
-            log.debug("Ping successful: " + host)
-        process.join()
+      # Remove old jobs
+      while not scanner_msgqueue.empty():
+        try:
+          scanner_msgqueue.get(False)
+        except QueueEmpty:
+          break
 
       insertHostsDataPoint(prev_slot)
       prev_hosts = next_hosts
@@ -224,13 +178,21 @@ def mainLoop():
       poke_time = next_slot - REMAINING_BEFORE_POKE
       poke_started = False
     elif not poke_started and now >= poke_time:
-      for host in prev_hosts:
-        try:
-          h = next_hosts[host]
-        except KeyError:
-          max_time = next_slot - now - 1
-          if max_time >= 5:
-            startPoke(host, prev_hosts[host].ip, max_time)
+      config.reload()
+
+      if config.getPeriodicDiscoveryEnabled():
+        scanner_msgqueue.put("net_scan")
+        log.debug("Peridoc ARP scan queued")
+      else:
+        for host in prev_hosts:
+          try:
+            h = next_hosts[host]
+          except KeyError:
+            max_time = next_slot - now - 1
+            if (max_time >= 5) and (config.getDeviceProbeEnabled(prev_hosts[host].mac)):
+              host = prev_hosts[host].ip
+              scanner_msgqueue.put(host)
+              log.debug("Host " + host + " ARP scan queued")
       poke_started = True
 
     for messages in manager.getMessages():
@@ -265,6 +227,7 @@ if __name__ == "__main__":
 
   from utils.jobs import JobsManager
   from packets_reader import PacketsReaderJob
+  from arp_scanner import ARPScannerJob
   from presence_db import PresenceDB
   from webserver import WebServerJob
   from meta_db import MetaDB
@@ -275,9 +238,14 @@ if __name__ == "__main__":
 
   log.info("Starting startup jobs...")
   manager = JobsManager()
+  scanner_msgqueue = manager.newQueue()
 
   log.debug("Starting packets reader...")
   manager.runJob(PacketsReaderJob())
+
+  log.debug("Starting ARP scanner...")
+  manager.runJob(ARPScannerJob(), (scanner_msgqueue,))
+
   log.debug("Starting web server...")
   manager.runJob(WebServerJob())
 

@@ -98,6 +98,9 @@ class JobsManager:
     signal.signal(signal.SIGHUP, old_sighup_handler)
     return True
 
+  def newQueue(self):
+    return Queue()
+
   def getRunning(self):
     self._checkJoin()
     return [job.job for job_id, job in self.running.iteritems() if job.thread.is_alive()]

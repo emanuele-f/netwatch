@@ -1,4 +1,7 @@
+$def with (config)
 $var page: Devices
+$ show_active_probe = "true" if not config.getPeriodicDiscoveryEnabled() else "false"
+$ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
 
 <div class="modal fade" id="addDeviceDialog" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
@@ -20,12 +23,12 @@ $var page: Devices
             <label for="customName">Custom name</label>
             <input type="text" class="form-control" id="customName" name="custom_name" placeholder="A custom name for the device"/>
           </div>
-          <div class="form-check">
+          <div class="form-check $active_probe_hidden">
             <label class="form-check-label">
               <input type="checkbox" class="form-check-input" name="active_ping" aria-describedby="activePingHelp">
-              Active ping
+              Active Probe
             </label>
-            <small id="activePingHelp" class="form-text text-muted">Can send ping requests to verify device status.</small>
+            <small id="activePingHelp" class="form-text text-muted">Can send ARP requests to verify the device status.</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -54,12 +57,12 @@ $var page: Devices
             <label for="customName">Custom name</label>
             <input id="macToEdit_name" type="text" class="form-control" id="customName" name="custom_name" placeholder="A custom name for the device"/>
           </div>
-          <div class="form-check">
+          <div class="form-check $active_probe_hidden">
             <label class="form-check-label">
               <input id="macToEdit_ping" type="checkbox" class="form-check-input" name="active_ping" aria-describedby="activePingHelp2">
-              Active ping
+              Active Probe
             </label>
-            <small id="activePingHelp2" class="form-text text-muted">Can send ping requests to verify device status.</small>
+            <small id="activePingHelp2" class="form-text text-muted">Can send ARP requests to verify the device status.</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -142,8 +145,9 @@ $var page: Devices
       title: 'Ip Address',
     }, {
       field: 'active_ping',
-      title: 'Active Ping',
+      title: 'Active Probe',
       class: 'text-center',
+      visible: $show_active_probe,
       formatter: function(value, row, index) {
         return value ? `<i class="fa fa-toggle-on"></i>` : `<i class="fa fa-toggle-off"></i>`;
       },

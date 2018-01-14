@@ -119,12 +119,12 @@ a, a:hover, a:focus {
   margin-right: 15px;
 }
 
-#pageContent a {
+.text a {
   border-bottom: 2px dashed #5798D6;
 }
 
-.pagination a {
-  border-bottom: none !important;
+.hidden {
+  display: none;
 }
 
 /*

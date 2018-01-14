@@ -21,29 +21,39 @@ import errno
 
 CONFIG_FILE = "config.json"
 DEVICES_CONFIG_SECTION = "devices"
+GLOBAL_CONFG_SECTION = "global"
+
+data = None
 
 def _getInitialConfig():
   data = {
     DEVICES_CONFIG_SECTION: {},
+    GLOBAL_CONFG_SECTION: {
+      "periodic_discovery": True,
+    },
   }
   return data
 
-def _loadData():
-  data = None
-  try:
-    data = json.load(open(CONFIG_FILE))
-  except IOError as err:
-    if err.errno == errno.ENOENT:
-      data = _getInitialConfig()
-    else:
-      raise
+def _loadData(force_reload = False):
+  global data
 
-  macs_upper = {}
+  if not data or force_reload:
+    data = None
 
-  for mac, mac_data in data[DEVICES_CONFIG_SECTION].iteritems():
-    macs_upper[mac.upper()] = mac_data
+    try:
+      data = json.load(open(CONFIG_FILE))
+    except IOError as err:
+      if err.errno == errno.ENOENT:
+        data = _getInitialConfig()
+      else:
+        raise
 
-  data[DEVICES_CONFIG_SECTION] = macs_upper
+    macs_upper = {}
+
+    for mac, mac_data in data[DEVICES_CONFIG_SECTION].iteritems():
+      macs_upper[mac.upper()] = mac_data
+
+    data[DEVICES_CONFIG_SECTION] = macs_upper
   return data
 
 def _writeData(data):
@@ -88,3 +98,21 @@ def deleteDevice(mac):
 def getConfiguredDevices():
   data = _loadData()
   return data[DEVICES_CONFIG_SECTION]
+
+def setPeriodicDiscoveryEnabled(enabled):
+  data = _loadData()
+  data[GLOBAL_CONFG_SECTION]["periodic_discovery"] = enabled
+  return _writeData(data)
+
+def getPeriodicDiscoveryEnabled():
+  data = _loadData()
+  return data[GLOBAL_CONFG_SECTION]["periodic_discovery"]
+
+def getDeviceProbeEnabled(mac):
+  try:
+    return data[DEVICES_CONFIG_SECTION][mac]["active_ping"]
+  except KeyError:
+    return False
+
+def reload():
+  _loadData(True)

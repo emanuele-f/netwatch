@@ -102,7 +102,7 @@ class timeline:
 
 class devices:
   def GET(self):
-    return template_render.devices()
+    return template_render.devices(config)
 
   def POST(self):
     data = web.input()
@@ -134,7 +134,19 @@ class people:
 
 class settings:
   def GET(self):
-    return template_render.settings()
+    return template_render.settings(config)
+
+  def POST(self):
+    data = web.input()
+    periodic_discovery = False
+
+    try:
+        periodic_discovery = data.periodic_discovery and True
+    except AttributeError: pass
+
+    config.setPeriodicDiscoveryEnabled(periodic_discovery)
+
+    raise web.seeother('/settings')
 
 class about:
   def GET(self):
