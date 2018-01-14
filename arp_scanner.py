@@ -47,9 +47,8 @@ class ARPScannerJob(Job):
     # Acquire capabilities to send packets
     acquire_capabilities()
 
-    # TODO make interface configurable
-    handle = arp_scanner.init_scanner("wlan0")
-    net_range = getDeviceNetwork("wlan0")
+    handle = arp_scanner.init_scanner(self.options["interface"])
+    net_range = getDeviceNetwork(self.options["interface"])
 
     while self.isRunning():
       task = None

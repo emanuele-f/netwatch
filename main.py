@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import sys
+import argparse
 import logging
 import signal, os
 import time, datetime
@@ -25,10 +27,6 @@ import subprocess
 import re
 import config
 from Queue import Empty as QueueEmpty
-
-# TODO make it configurable, allow to keep privileges
-PRIVILEGE_DROP_USER = "emanuele"
-PRIVILEGE_DROP_GROUP = "emanuele"
 
 TIME_SLOT = 60
 REMAINING_BEFORE_POKE = 20
@@ -148,6 +146,21 @@ def insertHostsDataPoint(time_ref):
   for host in next_hosts.values():
     meta_db.update(host.mac, int(host.last_seen), name=host.name, ip=host.ip)
 
+def guessMainInterface():
+  output = subprocess.check_output(['ip', '-4', 'route', 'list', '0/0'])
+
+  if output:
+    parts = output.split()
+    is_next = False
+
+    for part in parts:
+      if part == "dev":
+        is_next = True
+      elif is_next:
+        return part
+
+  return ""
+
 def mainLoop():
   global running
   global prev_hosts
@@ -206,7 +219,7 @@ def mainLoop():
       seconds = min(next_slot, now + MESSAGE_CHECK_INTERVAL) - now
       time.sleep(seconds)
 
-def dropPrivileges():
+def dropPrivileges(drop_user, drop_group):
   if os.getuid() != 0:
     print("You have not root privileges")
     exit(1)
@@ -214,14 +227,36 @@ def dropPrivileges():
   log.debug("Setting up required capabilities: " + ",".join(priv_utils.REQUIRED_CAPABILITIES))
   priv_utils.setup_permitted_capabilities()
 
-  log.info("Dropping provileges to %s:%s ..." % (PRIVILEGE_DROP_USER, PRIVILEGE_DROP_GROUP))
-  priv_utils.drop_privileges(PRIVILEGE_DROP_USER, PRIVILEGE_DROP_GROUP)
+  log.info("Dropping provileges to %s:%s ..." % (drop_user, drop_group))
+  priv_utils.drop_privileges(drop_user, drop_group)
 
 if __name__ == "__main__":
   import utils.privs as priv_utils
 
+  network_interface = guessMainInterface()
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-u', dest="user", default="root", help='user:group to drop privileges to (default: do not drop privileges)')
+  parser.add_argument('-i', dest="interface", default=network_interface, help='network interface to monitor (default: ' + network_interface + ')')
+
+  args = parser.parse_args(sys.argv[1:])
+
+  if args.interface == "":
+    log.error("Cannot determine main network interface, please specify the -i option")
+    exit(1)
+
+  if not ":" in args.user:
+    drop_user = args.user
+    drop_group = args.user
+  else:
+    drop_user, drop_group = args.user.split(":")
+
   initLogging()
-  dropPrivileges()
+
+  if (drop_user != "root") and (drop_group != "root"):
+    dropPrivileges(drop_user, drop_group)
+  else:
+    log.warning("Privileges will *not* be dropped, this could be dangerous!")
 
   log.debug("Loading modules...")
 
@@ -237,7 +272,9 @@ if __name__ == "__main__":
   meta_db = MetaDB()
 
   log.info("Starting startup jobs...")
-  manager = JobsManager()
+  manager = JobsManager({
+    "interface": args.interface,
+  })
   scanner_msgqueue = manager.newQueue()
 
   log.debug("Starting packets reader...")

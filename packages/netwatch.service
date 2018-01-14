@@ -1,0 +1,12 @@
+[Unit]
+Description=Netwatch - a tool to monitor the presence of the devices into a network
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/emanuele/netwatch
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python2 ./main.py
+
+[Install]
+WantedBy=multi-user.target

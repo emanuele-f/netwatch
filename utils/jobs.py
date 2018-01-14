@@ -27,6 +27,7 @@ class Job(object):
     self.id = idenfier
     self.task = task
     self._stopped = Event()
+    self.options = {}
 
   def askTerminate(self):
     self._stopped.set()
@@ -40,6 +41,9 @@ class Job(object):
   def isRunning(self):
     return not self.isTerminating()
 
+  def readOptions(self, options):
+    self.options = options
+
 class ManagedJob(object):
   def __init__(self, job, thread):
     self.job = job
@@ -47,9 +51,10 @@ class ManagedJob(object):
 
 # Manages jobs. Jobs with the same identifier can only run one at a time.
 class JobsManager:
-  def __init__(self):
+  def __init__(self, global_options):
     self.running = {}
     self.msg_queue = Queue()
+    self.global_options = global_options
 
   def _execJob(self, job, *args):
     job.task(*args)
@@ -89,6 +94,7 @@ class JobsManager:
     old_sighup_handler = signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
     args = (job, self.msg_queue, ) + args
+    job.readOptions(self.global_options)
     self.running[job.id] = ManagedJob(job, Process(target=self._execJob, args=args))
     self.running[job.id].thread.start()
 

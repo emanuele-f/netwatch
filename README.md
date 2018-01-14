@@ -45,11 +45,13 @@ After building the C modules, you can run netwatch with the following command:
 sudo ./main.py
 ```
 
+Note: you should add `-u user` option to drop the privileges to the specified user.
+
 You can now visit the page http://127.0.0.1:8000/ from your browser to access the
 Netwatch gui.
 
-Root privileges privileges will be dropped to nobody:nobody as soon as the
-required linux capabilities are set.
+System wide installation is not curretly supported. You can modify the sample service file `packages/netwatch.service`
+to run the program at startup.
 
 ## Licence
 
