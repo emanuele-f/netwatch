@@ -1,6 +1,6 @@
 # Netwatch
 
-Netwatch is a tool to monitor the presence of the devices of a network.
+Netwatch is a tool to monitor the presence of the devices into a network.
 
 Here is a list of features Netwatch provides:
 - Active/passive devices monitoring
@@ -45,6 +45,10 @@ sudo ./main.py
 
 Root privileges privileges will be dropped to nobody:nobody as soon as the
 required linux capabilities are set.
+
+# Licence
+
+Netwatch is under the GPL 3 license.
 
 # TODO 0.1
 - Integrate device arp scan
