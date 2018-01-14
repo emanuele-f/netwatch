@@ -1,6 +1,8 @@
 # Netwatch
 
-Netwatch is a tool to monitor the presence of the devices into a network.
+Netwatch - a tool to monitor the presence of the devices into a network.
+
+![alt text](https://raw.githubusercontent.com/emanuele-f/netwatch/master/screenshots/devices_page.png)
 
 Here is a list of features Netwatch provides:
 - Active/passive devices monitoring
