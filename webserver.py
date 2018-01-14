@@ -128,6 +128,18 @@ class devices:
 
     raise web.seeother('/devices')
 
+class people:
+  def GET(self):
+    return template_render.people()
+
+class settings:
+  def GET(self):
+    return template_render.settings()
+
+class about:
+  def GET(self):
+    return template_render.about()
+
 class devices_json:
   def GET(self):
     meta_db = MetaDB()
@@ -138,6 +150,9 @@ class WebServerJob(Job):
     urls = (
       '/', 'timeline',
       '/devices', 'devices',
+      '/people', 'people',
+      '/settings', 'settings',
+      '/about', 'about',
       '/data/devices.json', 'devices_json',
     )
 

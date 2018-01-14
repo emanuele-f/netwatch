@@ -14,7 +14,7 @@ Active scanning is only used as fallback method to verify a device presence when
 passive scanning fails. It is nevertheless possible to disable active scanning on
 a device basis or turn off periodic active scan to have a passive-only (stealth) solution.
 
-# Dependecies
+## Dependecies
 
 In order to run Netwatch, you will need to satisfy the following dependencies:
 
@@ -24,7 +24,7 @@ In order to run Netwatch, you will need to satisfy the following dependencies:
 - python2-prctl
 - python2-dev (for C modules compilation)
 
-# Build
+## Build
 
 Netwatch is written in python but requires some C modules to implement the low
 level stuff. Before running Netwatch you will need to execute the following commands:
@@ -35,7 +35,7 @@ make
 cd ..
 ```
 
-# Run
+## Run
 
 After building the C modules, you can run netwatch with the following command:
 
@@ -43,21 +43,23 @@ After building the C modules, you can run netwatch with the following command:
 sudo ./main.py
 ```
 
+You can now visit the page http://127.0.0.1:8000/ from your browser to access the
+Netwatch gui.
+
 Root privileges privileges will be dropped to nobody:nobody as soon as the
 required linux capabilities are set.
 
-# Licence
+## Licence
 
 Netwatch is under the GPL 3 license.
 
-# TODO 0.1
+## TODO 0.1
 - Integrate device arp scan
 - Add no data view
 - Setting to scan network periodically
 - People configuration
 - People timeline
-- Handle about
 - Handle login
 
-# TODO 0.2
+## TODO 0.2
 - Unknown devices filter
