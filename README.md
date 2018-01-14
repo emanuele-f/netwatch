@@ -24,6 +24,7 @@ In order to run Netwatch, you will need to satisfy the following dependencies:
 - python2-webpy
 - python2-pysqlite
 - python2-prctl
+- libdnet
 - python2-dev (for C modules compilation)
 
 ## Build

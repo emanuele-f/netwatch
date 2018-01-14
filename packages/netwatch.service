@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 WorkingDirectory=/home/emanuele/netwatch
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python2 ./main.py
+ExecStart=/usr/bin/python2 ./main.py -u emanuele -i wlan0
 
 [Install]
 WantedBy=multi-user.target
