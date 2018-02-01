@@ -60,7 +60,6 @@ Netwatch is under the GPL 3 license.
 
 ## TODO 0.1
 - Add no data view
-- People configuration
 - People timeline
 - Handle login
 

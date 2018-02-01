@@ -20,7 +20,7 @@ import web
 from presence_db import PresenceDB
 from meta_db import MetaDB
 from utils.jobs import Job
-from utils.data import getDevicesData
+from utils.data import getDevicesData, getUsersData
 from utils.timeutils import makeEndTimestamp
 import time
 import config
@@ -109,10 +109,12 @@ class devices:
     action = data.action
     mac = data.mac
     overwrite = False
+    user = ""
 
     if (action == "add") or (action == "edit"):
       if action == "edit":
         overwrite = True
+        user = data.user
 
       custom_name = data.custom_name
       active_ping = False
@@ -122,7 +124,7 @@ class devices:
         active_ping = data.active_ping and True
       except AttributeError: pass
 
-      config.addDevice(mac, custom_name, active_ping, overwrite=overwrite)
+      config.addDevice(mac, custom_name, active_ping, user=user, overwrite=overwrite)
     elif action == "delete":
       config.deleteDevice(mac)
 
@@ -131,6 +133,24 @@ class devices:
 class people:
   def GET(self):
     return template_render.people()
+
+  def POST(self):
+    data = web.input()
+    action = data.action
+    username = data.username
+    overwrite = False
+
+    if (action == "add") or (action == "edit"):
+      if action == "edit":
+        overwrite = True
+
+      active_ping = False
+
+      config.addUser(username, overwrite=overwrite)
+    elif action == "delete":
+      config.deleteUser(username)
+
+    raise web.seeother('/people')
 
 class settings:
   def GET(self):
@@ -157,6 +177,11 @@ class devices_json:
     meta_db = MetaDB()
     return sendJsonData(getDevicesData(meta_db))
 
+class users_json:
+  def GET(self):
+    meta_db = MetaDB()
+    return sendJsonData(getUsersData(meta_db))
+
 class WebServerJob(Job):
   def __init__(self):
     urls = (
@@ -166,6 +191,7 @@ class WebServerJob(Job):
       '/settings', 'settings',
       '/about', 'about',
       '/data/devices.json', 'devices_json',
+      '/data/users.json', 'users_json',
     )
 
     super(WebServerJob, self).__init__("web_server", self.run)

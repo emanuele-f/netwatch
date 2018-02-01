@@ -1,7 +1,112 @@
 $var page: People
 
-<div class="container-fluid">
-  <div class="row" style="margin-left: 20px;">
-    <h4>Sorry! This page is not implemented yet!</h4>
+
+<div class="modal fade" id="addUserDialog"" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Add User</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form method="post">
+        <div class="modal-body">
+          <input type="hidden" name="action" value="add" />
+          <div class="form-group">
+            <label for="username">Name</label>
+            <input type="text" class="form-control" name="username" placeholder="Enter user name" required/>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add User</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
+
+<div class="modal fade" id="deleteUserDialog" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Delete User</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form method="post">
+        <div class="modal-body">
+          <input type="hidden" name="action" value="delete" />
+          <input type="hidden" id="userToDelete" name="username" />
+
+          Do you really want to delete user "<span id="userToDeletePlaceholder"></span>"?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Delete User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="toolbar">
+     <button class="btn btn-secondary" data-toggle="modal" data-target="#addUserDialog">Add User</button>
+  </div>
+
+  <table id="users-table"></table>
+</div>
+
+<script>
+  function populateEditDialog(row) {
+/* TODO
+    $$('#macToEditPlaceholder').html(row.mac);
+    $$('#macToEdit').val(row.mac);
+    $$('#macToEdit_name').val(row.name);
+    $$('#macToEdit_ping').prop('checked', row.active_ping);
+*/
+  }
+
+  function populateDeleteDialog(row) {
+    $$('#userToDeletePlaceholder').html(row.name);
+    $$('#userToDelete').val(row.name);
+  }
+
+  $$('#users-table').netwatchTable({
+    url: 'data/users.json',
+    columns: [{
+      field: 'name',
+      title: 'Name',
+      sortable: true,
+    }, {
+      field: 'active',
+      title: 'Status',
+      class: 'text-center',
+      formatter: function(value, row, index) {
+        return value=="true" ? `<span class="badge badge-success">Online</span>` : `<span class="badge badge-default">Offline</span>`;
+      },
+      sortable: true,
+    }, {
+     title: 'Active Devices',
+     class: 'text-center',
+     formatter: function(value, row, index) {
+       return row.num_active_devices + " / " + row.tot_devices;
+     }
+    }],
+  actions: [/*{
+    modal: "#editUserDialog",
+    button: "btn-primary",
+    icon: "fa-pencil",
+    click: populateEditDialog,
+  }, */ {
+    modal: "#deleteUserDialog",
+    button: "btn-danger",
+    icon: "fa-trash",
+    click: populateDeleteDialog,
+  }],
+
+  });
+</script>

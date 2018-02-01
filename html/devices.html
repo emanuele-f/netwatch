@@ -2,12 +2,13 @@ $def with (config)
 $var page: Devices
 $ show_active_probe = "true" if not config.getPeriodicDiscoveryEnabled() else "false"
 $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
+$ users = config.getConfiguredUsers()
 
 <div class="modal fade" id="addDeviceDialog" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="exampleModalLabel">Add device</h5>
+        <h5 class="modal-title" id="exampleModalLabel">Add Device</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -33,7 +34,7 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add device</button>
+          <button type="submit" class="btn btn-primary">Add Device</button>
         </div>
       </form>
     </div>
@@ -44,7 +45,7 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="editDeviceLabel">Edit device <span id="macToEditPlaceholder"></span></h5>
+        <h5 class="modal-title" id="editDeviceLabel">Edit Device <span id="macToEditPlaceholder"></span></h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -57,6 +58,15 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
             <label for="customName">Custom name</label>
             <input id="macToEdit_name" type="text" class="form-control" id="customName" name="custom_name" placeholder="A custom name for the device"/>
           </div>
+          <div class="form-group">
+            <label for="deviceUser">User</label>
+            <select id="macToEdit_user" name="user" class="form-control">
+              <option value="">Others</option>
+
+              $for user in users:
+                <option value="$user">$user</option>
+            </select>
+          </div>
           <div class="form-check $active_probe_hidden">
             <label class="form-check-label">
               <input id="macToEdit_ping" type="checkbox" class="form-check-input" name="active_ping" aria-describedby="activePingHelp2">
@@ -67,7 +77,7 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Edit device</button>
+          <button type="submit" class="btn btn-primary">Edit Device</button>
         </div>
       </form>
     </div>
@@ -78,7 +88,7 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="deleteModalLabel">Delete device</h5>
+        <h5 class="modal-title" id="deleteModalLabel">Delete Device</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -92,7 +102,7 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-danger">Delete</button>
+          <button type="submit" class="btn btn-danger">Delete Device</button>
         </div>
       </form>
     </div>
@@ -108,22 +118,21 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
 </div>
 
 <script>
-  $$('#devices-table').bootstrapTable({
-    toolbar: '#toolbar',
-    iconsPrefix: 'fa',
-    pageSize: 10,
-    pagination: true,
-    icons: {
-      paginationSwitchDown: 'fa-collapse-down icon-chevron-down',
-      paginationSwitchUp: 'fa-collapse-up icon-chevron-up',
-      refresh: 'fa-refresh icon-refresh',
-      toggle: 'fa-list-alt icon-list-alt',
-      columns: 'fa-th icon-th',
-      detailOpen: 'fa-plus icon-plus',
-      detailClose: 'fa-minus icon-minus'
-    },
+  function populateEditDialog(row) {
+    $$('#macToEditPlaceholder').html(row.mac);
+    $$('#macToEdit').val(row.mac);
+    $$('#macToEdit_name').val(row.name);
+    $$('#macToEdit_user').val(row.user == "Others" ? "" : row.user);
+    $$('#macToEdit_ping').prop('checked', row.active_ping);
+  }
+
+  function populateDeleteDialog(row) {
+    $$('#macToDeletePlaceholder').html(row.mac);
+    $$('#macToDelete').val(row.mac);
+  }
+
+  $$('#devices-table').netwatchTable({
     url: 'data/devices.json',
-    search: true,
     columns: [{
       field: 'mac',
       title: 'Mac Address',
@@ -131,6 +140,10 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
     }, {
       field: 'name',
       title: 'Custom Name',
+      sortable: true,
+    }, {
+      field: 'user',
+      title: 'User',
       sortable: true,
     }, {
       field: 'active',
@@ -152,21 +165,16 @@ $ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
         return value ? `<i class="fa fa-toggle-on"></i>` : `<i class="fa fa-toggle-off"></i>`;
       },
       sortable: true,
-    }, {
-      title: 'Actions',
-      class: 'text-center',
-      formatter: function(value, row, index) {
-        return `<a href="#editDeviceDialog" data-toggle="modal" data-target="#editDeviceDialog"
-          class="btn btn-primary btn-sm"
-          onclick="$$('#macToEditPlaceholder').html('` + row.mac + `'); $$('#macToEdit').val('` + row.mac + `');\
-           $$('#macToEdit_name').val('` + row.name + `'); $$('#macToEdit_ping').prop('checked', ` + row.active_ping + `) ">
-          <i class="fa fa-pencil"></i></a>
-        <a href="#deleteDeviceDialog" data-toggle="modal" data-target="#deleteDeviceDialog"
-          class="btn btn-danger btn-sm"
-          onclick="$$('#macToDeletePlaceholder').html('` + row.mac + `'); $$('#macToDelete').val('` + row.mac + `');">
-          <i class="fa fa-trash"></i>
-        </a>`;
-      }
-    } ]
-  });
+  }], actions: [{
+    modal: "#editDeviceDialog",
+    button: "btn-primary",
+    icon: "fa-pencil",
+    click: populateEditDialog,
+  }, {
+    modal: "#deleteDeviceDialog",
+    button: "btn-danger",
+    icon: "fa-trash",
+    click: populateDeleteDialog,
+  }],
+ });
 </script>

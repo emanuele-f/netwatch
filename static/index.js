@@ -136,3 +136,57 @@ function makeDateTimePicker(picker_id, timestamp, resolution) {
 $.fn.datetimepicker.dates['en'] = $.extend($.fn.datetimepicker.dates['en'], {
   today: "Now",
 });
+
+var _netwatch_click_callback_id = 0;
+
+$.fn.netwatchTable = function(custom_options) {
+  var default_options = {
+    toolbar: '#toolbar',
+    iconsPrefix: 'fa',
+    pageSize: 10,
+    pagination: true,
+    search: true,
+    icons: {
+      paginationSwitchDown: 'fa-collapse-down icon-chevron-down',
+      paginationSwitchUp: 'fa-collapse-up icon-chevron-up',
+      refresh: 'fa-refresh icon-refresh',
+      toggle: 'fa-list-alt icon-list-alt',
+      columns: 'fa-th icon-th',
+      detailOpen: 'fa-plus icon-plus',
+      detailClose: 'fa-minus icon-minus'
+    },
+  };
+
+  var columns = custom_options.columns || [];
+
+  if (custom_options.actions) {
+    columns.push({
+      title: 'Actions',
+      class: 'text-center',
+      formatter: function(value, row, index) {
+         var actions_content = [];
+
+         for (var i=0; i<custom_options.actions.length; i++) {
+           var action = custom_options.actions[i];
+           var callback_id = _netwatch_click_callback_id++;
+           var callback_name = "_netwatch_click_cb_" + callback_id;
+
+           /* Create a new global function */
+           window[callback_name] = action.click.bind(null, row);
+
+           actions_content.push(`<a href="` + action.modal + `" data-toggle="modal" data-target="` + action.modal + `"
+             class="btn ` + action.button + ` btn-sm"
+             onclick="` + callback_name + `()">
+             <i class="fa ` + action.icon + `"></i></a>`);
+         }
+
+         return actions_content.join(" ");
+      }
+    });
+  }
+
+  var options = $.extend({}, default_options, custom_options);
+  options.columns = columns;
+
+  return $(this).bootstrapTable(options);
+}

@@ -21,6 +21,7 @@ import errno
 
 CONFIG_FILE = "config.json"
 DEVICES_CONFIG_SECTION = "devices"
+USERS_CONFIG_SECTION = "users"
 GLOBAL_CONFG_SECTION = "global"
 
 data = None
@@ -28,6 +29,7 @@ data = None
 def _getInitialConfig():
   data = {
     DEVICES_CONFIG_SECTION: {},
+    USERS_CONFIG_SECTION: {},
     GLOBAL_CONFG_SECTION: {
       "periodic_discovery": True,
     },
@@ -54,6 +56,7 @@ def _loadData(force_reload = False):
       macs_upper[mac.upper()] = mac_data
 
     data[DEVICES_CONFIG_SECTION] = macs_upper
+    data[USERS_CONFIG_SECTION] = data.get(USERS_CONFIG_SECTION, {})
   return data
 
 def _writeData(data):
@@ -73,17 +76,43 @@ def _writeConfigNode(root, key, value, overwrite=True):
   _writeData(data)
   return True
 
-def addDevice(mac, custom_name, ping_device, overwrite=False):
+def _usersRemoveDevice(mac):
+  for user, value in data[USERS_CONFIG_SECTION].iteritems():
+    if mac in value["devices"]:
+      value["devices"].remove(mac)
+
+def _userAddDevice(user, mac):
+  value = data[USERS_CONFIG_SECTION][user]
+
+  if not mac in value["devices"]:
+    value["devices"].append(mac)
+
+def getDeviceUser(mac):
+  for user, value in data[USERS_CONFIG_SECTION].iteritems():
+    if mac in value["devices"]:
+      return user
+  return None
+
+def addDevice(mac, custom_name, ping_device, user, overwrite=False):
   data = _loadData()
 
   if (not overwrite) and (mac in data[DEVICES_CONFIG_SECTION]):
     # device exists
     return False
 
+  if user and not data[USERS_CONFIG_SECTION].get(user):
+    # No such user
+    return False
+
+  _usersRemoveDevice(mac)
+
   data[DEVICES_CONFIG_SECTION][mac] = {
     "custom_name": custom_name,
     "active_ping": ping_device,
   }
+
+  if user:
+    _userAddDevice(user, mac)
 
   return _writeData(data)
 
@@ -92,12 +121,40 @@ def deleteDevice(mac):
   if not mac in data[DEVICES_CONFIG_SECTION]:
     return False
 
-  data[DEVICES_CONFIG_SECTION].pop(mac)
+  value = data[DEVICES_CONFIG_SECTION].pop(mac)
+  _usersRemoveDevice(mac)
+
   return _writeData(data)
 
 def getConfiguredDevices():
   data = _loadData()
   return data[DEVICES_CONFIG_SECTION]
+
+def addUser(username, overwrite=False):
+  data = _loadData()
+
+  if (not overwrite) and (username in data[USERS_CONFIG_SECTION]):
+    # user exists
+    return False
+
+  data[USERS_CONFIG_SECTION][username] = {
+    "icon": None,
+    "devices": [],
+  }
+
+  return _writeData(data)
+
+def deleteUser(username):
+  data = _loadData()
+  if not username in data[USERS_CONFIG_SECTION]:
+    return False
+
+  data[USERS_CONFIG_SECTION].pop(username)
+  return _writeData(data)
+
+def getConfiguredUsers():
+  data = _loadData()
+  return data[USERS_CONFIG_SECTION]
 
 def setPeriodicDiscoveryEnabled(enabled):
   data = _loadData()

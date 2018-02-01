@@ -22,6 +22,20 @@ import config
 
 MAX_TIME_TO_BE_INACTIVE = 300
 
+def isActiveDevice(metadata):
+  return (time.time() - metadata["last_seen"]) <= MAX_TIME_TO_BE_INACTIVE 
+
+def countActiveUserDevices(devices_list, meta_db):
+  count = 0
+
+  for mac in devices_list:
+    metadata = meta_db.query(mac)
+
+    if metadata and isActiveDevice(metadata):
+      count += 1
+
+  return count
+
 def getDevicesData(meta_db):
   res = []
 
@@ -33,15 +47,31 @@ def getDevicesData(meta_db):
 
     if metadata:
       if metadata["last_ip"]: device_ip = metadata["last_ip"]
-      if metadata["last_seen"]: device_active = "true" if (time.time() - metadata["last_seen"]) <= MAX_TIME_TO_BE_INACTIVE else "false"
+      if metadata["last_seen"]: device_active = "true" if isActiveDevice(metadata) else "false"
       if metadata["name"] and not devname: devname = metadata["name"]
 
     res.append({
       "mac": mac,
       "name": devname,
+      "user": config.getDeviceUser(mac) or "Others",
       "ip": device_ip,
       "active_ping": value["active_ping"],
       "active": device_active,
     })
   
+  return res
+
+def getUsersData(meta_db):
+  res = []
+
+  for username, value in config.getConfiguredUsers().iteritems():
+    num_active_devices = countActiveUserDevices(value["devices"], meta_db)
+
+    res.append({
+      "name": username,
+      "active": "true" if num_active_devices > 0 else "false",
+      "num_active_devices": num_active_devices,
+      "tot_devices": len(value["devices"]),
+    })
+
   return res
