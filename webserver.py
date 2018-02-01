@@ -138,15 +138,15 @@ class people:
     data = web.input()
     action = data.action
     username = data.username
-    overwrite = False
+    old_username = None
 
     if (action == "add") or (action == "edit"):
       avatar = data.avatar
 
       if action == "edit":
-        overwrite = True
+        old_username = data.old_username
 
-      config.addUser(username, avatar, overwrite=overwrite)
+      config.addUser(username, avatar, old_username)
     elif action == "delete":
       config.deleteUser(username)
 

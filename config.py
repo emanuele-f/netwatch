@@ -130,18 +130,28 @@ def getConfiguredDevices():
   data = _loadData()
   return data[DEVICES_CONFIG_SECTION]
 
-def addUser(username, avatar, overwrite=False):
+def addUser(username, avatar, old_username):
   data = _loadData()
 
-  if (not overwrite) and (username in data[USERS_CONFIG_SECTION]):
+  if (old_username != username) and (username in data[USERS_CONFIG_SECTION]):
     # user exists
     return False
 
-  data[USERS_CONFIG_SECTION][username] = {
-    "icon": avatar,
-    "devices": [],
-  }
+  if old_username and (not old_username in data[USERS_CONFIG_SECTION]):    # old user does not exists
+    return False
 
+  user = None
+
+  if old_username:
+    user = data[USERS_CONFIG_SECTION].pop(old_username)
+    user["icon"] = avatar
+  else:
+    user = {
+      "icon": avatar,
+      "devices": [],
+    }
+
+  data[USERS_CONFIG_SECTION][username] = user
   return _writeData(data)
 
 def deleteUser(username):

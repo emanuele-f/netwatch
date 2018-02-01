@@ -6,30 +6,31 @@ $ user_images = ["001-man-13.png", "002-woman-14.png", "004-woman-12.png", "007-
 
 $ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class='btn btn-secondary'><img src='static/png/%s'></a>" % image for image in user_images]) + "</div>"
 
-<div class="modal fade" id="addUserDialog"" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<div class="modal fade" id="addUserDialog"" tabindex="-1" role="dialog" aria-labelledby="addUserTitle" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="exampleModalLabel">Add User</h5>
+        <h5 class="modal-title" id="addUserTitle">Add User</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
       <form method="post">
         <div class="modal-body" >
-          <input type="hidden" name="action" value="add" />
+          <input id="user-mod-action" type="hidden" name="action" value="add" />
+          <input id="user-old-username" type="hidden" name="old_username">
 
           <input id="user-image-current" type="hidden" name="avatar" value="$default_user_avatar">
           <img id="user-image-picked" class="img-thumbnail rounded-circle" rel="popover" src="$default_user_avatar" data-content="$image_picker_content">
 
           <div class="form-group">
-            <label for="username">Name</label>
-            <input type="text" class="form-control" name="username" placeholder="Enter user name" required/>
+            <label for="user-username">Name</label>
+            <input id="user-username" type="text" class="form-control" name="username" placeholder="Enter user name" required/>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add User</button>
+          <button id="add-user-submit" type="submit" class="btn btn-primary">Add User</button>
         </div>
       </form>
     </div>
@@ -63,20 +64,30 @@ $ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class=
 
 <div class="container">
   <div id="toolbar">
-     <button class="btn btn-secondary" data-toggle="modal" data-target="#addUserDialog">Add User</button>
+     <button class="btn btn-secondary" data-toggle="modal" data-target="#addUserDialog" onclick="populateAddDialog();">Add User</button>
   </div>
 
   <table id="users-table"></table>
 </div>
 
 <script>
+  function populateAddDialog() {
+    $$('#user-old-username').closest("form").get(0).reset();
+    $$('#user-mod-action').val("add");
+    $$('#user-image-current').val("$default_user_avatar");
+    $$('#user-image-picked').attr("src", "$default_user_avatar");
+    $$('#addUserTitle').html("Add User");
+    $$('#add-user-submit').html("Add User");
+  }
+
   function populateEditDialog(row) {
-/* TODO
-    $$('#macToEditPlaceholder').html(row.mac);
-    $$('#macToEdit').val(row.mac);
-    $$('#macToEdit_name').val(row.name);
-    $$('#macToEdit_ping').prop('checked', row.active_ping);
-*/
+    $$('#user-mod-action').val("edit");
+    $$('#user-old-username').val(row.name);
+    $$('#user-username').val(row.name);
+    $$('#user-image-current').val(row.icon || "$default_user_avatar");
+    $$('#user-image-picked').attr("src", row.icon || "$default_user_avatar");
+    $$('#addUserTitle').html("Edit User");
+    $$('#add-user-submit').html("Edit User");
   }
 
   function populateDeleteDialog(row) {
@@ -107,12 +118,12 @@ $ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class=
        return row.num_active_devices + " / " + row.tot_devices;
      }
     }],
-  actions: [/*{
-    modal: "#editUserDialog",
+  actions: [{
+    modal: "#addUserDialog",
     button: "btn-primary",
     icon: "fa-pencil",
     click: populateEditDialog,
-  }, */ {
+  }, {
     modal: "#deleteUserDialog",
     button: "btn-danger",
     icon: "fa-trash",
