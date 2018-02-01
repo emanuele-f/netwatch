@@ -69,6 +69,7 @@ def getUsersData(meta_db):
 
     res.append({
       "name": username,
+      "icon": value.get("icon"),
       "active": "true" if num_active_devices > 0 else "false",
       "num_active_devices": num_active_devices,
       "tot_devices": len(value["devices"]),

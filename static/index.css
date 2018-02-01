@@ -176,3 +176,34 @@ a, a:hover, a:focus {
   padding: 5px !important;
   height: 35px !important;
 }
+
+#user-image-picked {
+  width: 140px;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+
+#user-image-picked:hover {
+  border-color: #B6B6B6;
+}
+
+.user-image-picker a {
+  padding: 4px 6px;
+  border: 0px;
+}
+
+.user-image-picker img {
+  width: 30px;
+  display: inline-block;
+}
+
+/* #addUserDialog */
+.popover {
+  max-width: 330px !important;
+}
+
+.user-name-icon {
+  width: 36px;
+  margin-right: 5px;
+}

@@ -141,12 +141,12 @@ class people:
     overwrite = False
 
     if (action == "add") or (action == "edit"):
+      avatar = data.avatar
+
       if action == "edit":
         overwrite = True
 
-      active_ping = False
-
-      config.addUser(username, overwrite=overwrite)
+      config.addUser(username, avatar, overwrite=overwrite)
     elif action == "delete":
       config.deleteUser(username)
 

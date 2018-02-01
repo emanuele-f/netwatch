@@ -1,5 +1,10 @@
 $var page: People
 
+$ default_user_avatar = "static/png/001-man-13.png"
+
+$ user_images = ["001-man-13.png", "002-woman-14.png", "004-woman-12.png", "007-woman-9.png", "010-woman-6.png", "013-woman-3.png", "016-man-10.png", "019-man-7.png", "022-man-4.png", "025-man-1.png", "028-boy-5.png", "031-boy-2.png", "034-woman-2.png", "005-woman-11.png", "008-woman-8.png", "011-woman-5.png", "014-man-12.png", "017-man-9.png", "020-man-6.png", "023-man-3.png", "026-man.png", "029-boy-4.png", "032-boy-1.png", "035-woman-1.png", "003-woman-13.png", "006-woman-10.png", "009-woman-7.png", "012-woman-4.png", "015-man-11.png", "018-man-8.png", "021-man-5.png", "024-man-2.png", "027-boy-6.png", "033-boy.png", "036-woman.png"]
+
+$ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class='btn btn-secondary'><img src='static/png/%s'></a>" % image for image in user_images]) + "</div>"
 
 <div class="modal fade" id="addUserDialog"" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
@@ -11,8 +16,12 @@ $var page: People
         </button>
       </div>
       <form method="post">
-        <div class="modal-body">
+        <div class="modal-body" >
           <input type="hidden" name="action" value="add" />
+
+          <input id="user-image-current" type="hidden" name="avatar" value="$default_user_avatar">
+          <img id="user-image-picked" class="img-thumbnail rounded-circle" rel="popover" src="$default_user_avatar" data-content="$image_picker_content">
+
           <div class="form-group">
             <label for="username">Name</label>
             <input type="text" class="form-control" name="username" placeholder="Enter user name" required/>
@@ -78,9 +87,11 @@ $var page: People
   $$('#users-table').netwatchTable({
     url: 'data/users.json',
     columns: [{
-      field: 'name',
       title: 'Name',
       sortable: true,
+      formatter: function(value, row, index) {
+        return '<img src="' + (row.icon || "$default_user_avatar") + '" class="img-thumbnail rounded-circle user-name-icon"> ' + row.name;
+      }
     }, {
       field: 'active',
       title: 'Status',
@@ -108,5 +119,32 @@ $var page: People
     click: populateDeleteDialog,
   }],
 
+  });
+
+  $$('[rel=popover]').popover({
+    html: true,
+    trigger: 'click',
+    placement: 'bottom',
+  });
+
+  // Handle user image picker interactions
+  $$(document).on("mouseenter", ".user-image-picker a", function() {
+    var image = $$(this).find("img").attr("src");
+    $$("#user-image-picked").attr("src", image);
+  });
+
+  $$(document).on("mouseleave", ".user-image-picker a", function() {
+    var image = $$(this).find("img").attr("src");
+    var shown = $$("#user-image-picked").attr("src");
+
+    if (image == shown)
+      $$("#user-image-picked").attr("src", $$("#user-image-current").val());
+  });
+
+  $$(document).on("click", ".user-image-picker a", function() {
+    var image = $$(this).find("img").attr("src");
+    $$("#user-image-current").val(image);
+    $$("#user-image-picked").attr("src", image);
+    $$(this).closest(".popover").popover('hide');
   });
 </script>

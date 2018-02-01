@@ -130,7 +130,7 @@ def getConfiguredDevices():
   data = _loadData()
   return data[DEVICES_CONFIG_SECTION]
 
-def addUser(username, overwrite=False):
+def addUser(username, avatar, overwrite=False):
   data = _loadData()
 
   if (not overwrite) and (username in data[USERS_CONFIG_SECTION]):
@@ -138,7 +138,7 @@ def addUser(username, overwrite=False):
     return False
 
   data[USERS_CONFIG_SECTION][username] = {
-    "icon": None,
+    "icon": avatar,
     "devices": [],
   }
 
