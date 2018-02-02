@@ -27,14 +27,19 @@ def isActiveDevice(metadata):
 
 def countActiveUserDevices(devices_list, meta_db):
   count = 0
+  activity_count = 0
 
   for mac in devices_list:
     metadata = meta_db.query(mac)
 
     if metadata and isActiveDevice(metadata):
       count += 1
+      mac_info = config.getDeviceInfo(mac)
 
-  return count
+      if mac_info and mac_info.get("trigger_activity"):
+        activity_count += 1
+
+  return count, activity_count
 
 def getDevicesData(meta_db):
   res = []
@@ -56,6 +61,7 @@ def getDevicesData(meta_db):
       "user": config.getDeviceUser(mac) or "Others",
       "ip": device_ip,
       "active_ping": value["active_ping"],
+      "trigger_activity": value.get("trigger_activity", False),
       "active": device_active,
     })
   
@@ -65,12 +71,12 @@ def getUsersData(meta_db):
   res = []
 
   for username, value in config.getConfiguredUsers().iteritems():
-    num_active_devices = countActiveUserDevices(value["devices"], meta_db)
+    num_active_devices, num_activity_devices = countActiveUserDevices(value["devices"], meta_db)
 
     res.append({
       "name": username,
       "icon": value.get("icon"),
-      "active": "true" if num_active_devices > 0 else "false",
+      "active": "true" if num_activity_devices > 0 else "false",
       "num_active_devices": num_active_devices,
       "tot_devices": len(value["devices"]),
     })

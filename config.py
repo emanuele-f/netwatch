@@ -93,7 +93,7 @@ def getDeviceUser(mac):
       return user
   return None
 
-def addDevice(mac, custom_name, ping_device, user, overwrite=False):
+def addDevice(mac, custom_name, ping_device, user, trigger_activity, overwrite=False):
   data = _loadData()
 
   if (not overwrite) and (mac in data[DEVICES_CONFIG_SECTION]):
@@ -109,6 +109,7 @@ def addDevice(mac, custom_name, ping_device, user, overwrite=False):
   data[DEVICES_CONFIG_SECTION][mac] = {
     "custom_name": custom_name,
     "active_ping": ping_device,
+    "trigger_activity": trigger_activity,
   }
 
   if user:
@@ -129,6 +130,14 @@ def deleteDevice(mac):
 def getConfiguredDevices():
   data = _loadData()
   return data[DEVICES_CONFIG_SECTION]
+
+def getDeviceInfo(mac):
+  data = _loadData()
+
+  if mac in data[DEVICES_CONFIG_SECTION]:
+    return data[DEVICES_CONFIG_SECTION][mac]
+
+  return None
 
 def addUser(username, avatar, old_username):
   data = _loadData()

@@ -99,6 +99,7 @@ $ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class=
     url: 'data/users.json',
     columns: [{
       title: 'Name',
+      field: 'name',
       sortable: true,
       formatter: function(value, row, index) {
         return '<img src="' + (row.icon || "$default_user_avatar") + '" class="img-thumbnail rounded-circle user-name-icon"> ' + row.name;

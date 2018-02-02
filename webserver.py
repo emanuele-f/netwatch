@@ -118,13 +118,17 @@ class devices:
 
       custom_name = data.custom_name
       active_ping = False
+      trigger_activity = False
 
       # Optional
       try:
         active_ping = data.active_ping and True
       except AttributeError: pass
+      try:
+        trigger_activity = data.trigger_activity and True
+      except AttributeError: pass
 
-      config.addDevice(mac, custom_name, active_ping, user=user, overwrite=overwrite)
+      config.addDevice(mac, custom_name, active_ping, user, trigger_activity, overwrite=overwrite)
     elif action == "delete":
       config.deleteDevice(mac)
 

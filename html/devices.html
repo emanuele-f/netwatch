@@ -24,6 +24,13 @@ $ users = config.getConfiguredUsers()
             <label for="customName">Custom name</label>
             <input type="text" class="form-control" id="customName" name="custom_name" placeholder="A custom name for the device"/>
           </div>
+          <div class="form-check">
+            <label class="form-check-label">
+              <input type="checkbox" class="form-check-input" name="trigger_activity" aria-describedby="userActivityHelp">
+              Trigger User Activity
+            </label>
+            <small id="userActivityHelp2" class="form-text text-muted">When this device is active its user will be online.</small>
+          </div>
           <div class="form-check $active_probe_hidden">
             <label class="form-check-label">
               <input type="checkbox" class="form-check-input" name="active_ping" aria-describedby="activePingHelp">
@@ -66,6 +73,13 @@ $ users = config.getConfiguredUsers()
               $for user in users:
                 <option value="$user">$user</option>
             </select>
+          </div>
+          <div class="form-check">
+            <label class="form-check-label">
+              <input id="macToEdit_activity" type="checkbox" class="form-check-input" name="trigger_activity" aria-describedby="userActivityHelp2">
+              Trigger User Activity
+            </label>
+            <small id="userActivityHelp" class="form-text text-muted">When this device is active its user will be online.</small>
           </div>
           <div class="form-check $active_probe_hidden">
             <label class="form-check-label">
@@ -124,6 +138,7 @@ $ users = config.getConfiguredUsers()
     $$('#macToEdit_name').val(row.name);
     $$('#macToEdit_user').val(row.user == "Others" ? "" : row.user);
     $$('#macToEdit_ping').prop('checked', row.active_ping);
+    $$('#macToEdit_activity').prop('checked', row.trigger_activity);
   }
 
   function populateDeleteDialog(row) {
@@ -142,9 +157,12 @@ $ users = config.getConfiguredUsers()
       title: 'Custom Name',
       sortable: true,
     }, {
-      field: 'user',
       title: 'User',
+      field: 'user',
       sortable: true,
+      formatter: function(value, row, index) {
+        return (row.trigger_activity ? '<i class="fa fa-heartbeat fa-sm" title="Trigger User Activity"></i> ' : '') + row.user;
+      }
     }, {
       field: 'active',
       title: 'Status',
