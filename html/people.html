@@ -114,6 +114,8 @@ $ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class=
       sortable: true,
     }, {
      title: 'Active Devices',
+     field: 'num_active_devices',
+     sortable: true,
      class: 'text-center',
      formatter: function(value, row, index) {
        return row.num_active_devices + " / " + row.tot_devices;
