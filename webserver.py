@@ -84,17 +84,20 @@ class timeline:
     data = []
     for device, intervals in presence_data.iteritems():
       name = device
+      name_on_packet = ""
+
+      meta = meta_db.query(device)
+
+      if meta and meta["name"]:
+        name_on_packet = meta["name"]
 
       if device in configured_devices:
         name = configured_devices[device]["custom_name"]
-      else:
-        meta = meta_db.query(device)
-
-        if meta and meta["name"]:
-          name = meta["name"]
+      elif name_on_packet:
+        name = name_on_packet
 
       for interval in intervals:
-        data.append((name, "", interval[0], interval[1], device))
+        data.append((name, "", interval[0], interval[1], device, name_on_packet))
 
     data.sort()
 

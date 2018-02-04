@@ -2,7 +2,6 @@ $def with (intervals_data, timestamp, timestamp_end, resolution, chart_min_time)
 $var page: Timeline
 $ time_format = "%b %Y" if (resolution == "1M") else "%d %b" if (resolution == "24h") else "%H:%M"
 $ colors = '["#4285f4",]'
-$ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
 
 <div class="container-fluid">
   <div class="row" style="margin-left: 20px;">
@@ -51,7 +50,16 @@ $ view_label = "Aggregated View" if (resolution != "1m") else "Accurate View"
       var format = d3.isoParse.wrap(d3.timeFormat("$time_format"));
       var dstart = format(d[2]);
       var dend = format(d[3]);
-      return '<b>$view_label</b><hr style="margin: 2px 0 2px 0">' +
+      var mac = d[4];
+      var name_on_packet = d[5];
+      var title;
+
+      if(name_on_packet)
+        title = name_on_packet + " (" + mac + ")";
+      else
+        title = mac;
+
+      return '<b>' + title + '</b><hr style="margin: 2px 0 2px 0">' +
           ((dstart != dend) ? (dstart + ' - ' + dend) : dstart);
     });
   }
