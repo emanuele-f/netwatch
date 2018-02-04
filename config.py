@@ -95,6 +95,7 @@ def getDeviceUser(mac):
 
 def addDevice(mac, custom_name, ping_device, user, trigger_activity, overwrite=False):
   data = _loadData()
+  mac = mac.upper()
 
   if (not overwrite) and (mac in data[DEVICES_CONFIG_SECTION]):
     # device exists
