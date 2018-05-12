@@ -21,6 +21,7 @@
 from multiprocessing import Queue, Event, Process
 from Queue import Empty as QueueEmpty
 import signal
+import os
 
 class Job(object):
   def __init__(self, idenfier, task):
@@ -57,6 +58,7 @@ class JobsManager:
     self.global_options = global_options
 
   def _execJob(self, job, *args):
+    #print("Job[%d]: %s" % (os.getpid(), job.id))
     job.task(*args)
 
   def _checkJoin(self, wait=False):

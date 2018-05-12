@@ -32,16 +32,12 @@
 #define MAC_BUF_SIZE 18
 #define IP_BUF_SIZE INET_ADDRSTRLEN
 #define NAME_BUF_SIZE 64
+#define DNS_QUERY_SIZE 128
 
 #define min(x, y) ((x) <= (y) ? (x) : (y))
 
 //#define DEBUG
 //#define USE_SAMPLE_PCAP
-
-// Note for packet timeout: heavy buffering makes timouts impredictable
-// Define USE_IMMEDIATE_MODE to disable buffering
-// https://github.com/the-tcpdump-group/libpcap/issues/572
-//#define USE_IMMEDIATE_MODE
 
 /* ************************************************************ */
 
@@ -55,29 +51,32 @@ static char* format_mac(u_char *mac, char *buf, int buf_len) {
 
 /* ************************************************************ */
 
-static pcap_t* _open_capture_dev(const char *devname, int read_timeout, const char *filter_exp) {
+static pcap_t* _open_capture_dev(const char *devname, int read_timeout, const char *filter_exp, int immediate_mode) {
   char errbuf[PCAP_ERRBUF_SIZE];
   struct bpf_program fp;
   pcap_t *handle = NULL;
-
   
-#if defined USE_IMMEDIATE_MODE
-  pcap_t *_handle;
-  _handle = pcap_create(devname, errbuf);
+  // Note for packet timeout: heavy buffering makes timouts impredictable
+  // https://github.com/the-tcpdump-group/libpcap/issues/572
 
-  if (_handle)
-    if (pcap_set_timeout(_handle, read_timeout) == 0)
-      if (pcap_set_snaplen(_handle, SNAPLEN) == 0)
-        if (pcap_set_promisc(_handle, PROMISC) == 0)
-          if (pcap_set_immediate_mode(_handle, 1) == 0)
-            if (pcap_activate(_handle) == 0)
-              handle = _handle;
-        
-#elif ! defined USE_SAMPLE_PCAP
+  if(immediate_mode) {
+    pcap_t *_handle;
+    _handle = pcap_create(devname, errbuf);
+
+    if (_handle)
+      if (pcap_set_timeout(_handle, read_timeout) == 0)
+        if (pcap_set_snaplen(_handle, SNAPLEN) == 0)
+          if (pcap_set_promisc(_handle, PROMISC) == 0)
+            if (pcap_set_immediate_mode(_handle, 1) == 0)
+              if (pcap_activate(_handle) == 0)
+                handle = _handle;
+ } else {
+#if ! defined USE_SAMPLE_PCAP
   handle = pcap_open_live(devname, SNAPLEN, PROMISC, read_timeout, errbuf);
 #else
   handle = pcap_open_offline("dhcp.pcap", errbuf);
 #endif
+  }
 
   if (handle == NULL) {
     fprintf(stderr, "Couldn't open device %s: %s\n", devname, errbuf);
@@ -121,7 +120,7 @@ static void _close_capture_dev(pcap_t *handle) {
  * When 1 is retuned, the mac_buf and ip_buf parameters will be filled accordingly.
  * When 1 is retuned, the name_buf will only be set if a relevant name as been found.
  */
-static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *name_buf) {
+static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *name_buf, char *dns_query) {
   struct pcap_pkthdr header;
   struct in_addr ip_addr;
   struct arphdr *arp;
@@ -231,6 +230,27 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
                   return 0;
               } else
                return 0;
+            } else if ((ntohs(udp_header->dport) == 53) && (len >= ntohs(udp_header->len)) && (ntohs(udp_header->len) >= sizeof(struct dns_packet_t))) {
+              struct dns_packet_t* dns = (struct dns_packet_t *) ((u_char *)udp_header + sizeof(struct udphdr));
+              len -= sizeof(struct udphdr);
+
+              if(((ntohs(dns->flags) & DNS_FLAGS_MASK) == DNS_TYPE_REQUEST) && ntohs(dns->questions >= 1)) {
+                int i;
+
+                for(i=0; i<min(DNS_QUERY_SIZE-1, len); i++) {
+                  char c = dns->queries[i];
+
+                  if(!c)
+                    break;
+                  else if(c < ' ')
+                    c = '.';
+
+                  dns_query[i] = c;
+                }
+
+                dns_query[i] = '\0';
+                //printf("DNS REQUEST: %s %s\n", ip_buf, dns_query);
+              }
             }
           }
 
@@ -278,12 +298,13 @@ static PyTypeObject pkt_readerType = {
 static PyObject *open_capture_dev(PyObject *self, PyObject *args) {
   const char *devname, *filter_exp;
   int read_timeout;
+  int immediate_mode;
   pcap_t *handle;
 
-  if (!PyArg_ParseTuple(args, "sis", &devname, &read_timeout, &filter_exp))
+  if (!PyArg_ParseTuple(args, "sisb", &devname, &read_timeout, &filter_exp, &immediate_mode))
     return NULL;
 
-  handle = _open_capture_dev(devname, read_timeout, filter_exp);
+  handle = _open_capture_dev(devname, read_timeout, filter_exp, immediate_mode);
 
   if (!handle)
     return NULL;
@@ -316,12 +337,13 @@ static PyObject *read_packet_info(PyObject *self, PyObject *args) {
   char mac_buf[MAC_BUF_SIZE];
   char ip_buf[IP_BUF_SIZE];
   char name_buf[NAME_BUF_SIZE];
+  char dns_buf[DNS_QUERY_SIZE];
 
   if (!PyArg_ParseTuple(args, "O", &wrapper))
     return NULL;
 
-  mac_buf[0] = ip_buf[0] = name_buf[0] = '\0';
-  if (! _read_packet_info(wrapper->handle, mac_buf, ip_buf, name_buf))
+  mac_buf[0] = ip_buf[0] = name_buf[0] = dns_buf[0] = '\0';
+  if (! _read_packet_info(wrapper->handle, mac_buf, ip_buf, name_buf, dns_buf))
     return Py_BuildValue("s", NULL);
 
   dict = PyDict_New();
@@ -331,6 +353,7 @@ static PyObject *read_packet_info(PyObject *self, PyObject *args) {
   if (mac_buf[0]) PyDict_SetItemString(dict, "mac", PyString_FromString(mac_buf));
   if (ip_buf[0]) PyDict_SetItemString(dict, "ip", PyString_FromString(ip_buf));
   if (name_buf[0]) PyDict_SetItemString(dict, "name", PyString_FromString(name_buf));
+  if (dns_buf[0]) PyDict_SetItemString(dict, "query", PyString_FromString(dns_buf));
 
   return dict;
 }
@@ -366,7 +389,7 @@ int main(int argc, char *argv[]) {
   char ip_buf[IP_BUF_SIZE];
   char name_buf[NAME_BUF_SIZE];
 
-  pcap_t *dev = _open_capture_dev(devname, 1000, "broadcast or arp");
+  pcap_t *dev = _open_capture_dev(devname, 1000, "broadcast or arp", 0);
 
   if (dev != NULL) {
     printf("Capturing packets on %s...\n", devname);

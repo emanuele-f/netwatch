@@ -47,7 +47,7 @@ class PacketsReaderJob(Job):
     self.msg_queue = msg_queue
 
     # TODO make interface configurable
-    handle = pkt_reader.open_capture_dev(self.options["interface"], 1000, "broadcast or arp")
+    handle = pkt_reader.open_capture_dev(self.options["interface"], 1000, "broadcast or arp", False)
 
     while self.isRunning():
       info = pkt_reader.read_packet_info(handle)

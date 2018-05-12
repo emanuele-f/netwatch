@@ -106,3 +106,17 @@ struct dhcp_packet_t {
   uint32_t magic; /* 236 */
   uint8_t options[];
 } __attribute__((packed));
+
+#define DNS_FLAGS_MASK 0x8000
+#define DNS_TYPE_REQUEST 0x0000
+
+struct dns_packet_t {
+  uint16_t transaction_id;
+  uint16_t flags;
+  uint16_t questions;
+  uint16_t answ_rrs;
+  uint16_t auth_rrs;
+  uint16_t additional_rrs;
+  uint8_t initial_dot; // just skip
+  uint8_t queries[];
+} __attribute__((packed));
