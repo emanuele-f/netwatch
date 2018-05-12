@@ -97,9 +97,12 @@ static pcap_t* _open_capture_dev(const char *devname, int read_timeout, const ch
 
   if (pcap_setfilter(handle, &fp) == -1) {
     fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
+    pcap_freecode(&fp);
     pcap_close(handle);
     return NULL;
   }
+
+  pcap_freecode(&fp);
 
   return handle;
 }
@@ -388,6 +391,7 @@ int main(int argc, char *argv[]) {
   char mac_buf[MAC_BUF_SIZE];
   char ip_buf[IP_BUF_SIZE];
   char name_buf[NAME_BUF_SIZE];
+  char dns_buf[DNS_QUERY_SIZE];
 
   pcap_t *dev = _open_capture_dev(devname, 1000, "broadcast or arp", 0);
 
@@ -398,8 +402,8 @@ int main(int argc, char *argv[]) {
       mac_buf[0] = '\0';
       name_buf[0] = '\0';
 
-      if (_read_packet_info(dev, mac_buf, ip_buf, name_buf)) {
-        printf("+ Seen %s as %s [name=%s]\n", mac_buf, ip_buf, name_buf);
+      if (_read_packet_info(dev, mac_buf, ip_buf, name_buf, dns_buf)) {
+        printf("+ Seen %s as %s [name=%s][dns=%s]\n", mac_buf, ip_buf, name_buf, dns_buf);
       }
     }
 
