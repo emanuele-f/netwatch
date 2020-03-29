@@ -33,9 +33,9 @@ WEB_PORT = 8000
 template_render = web.template.render(TEMPLATES, base='layout')
 
 class MyApplication(web.application):
-  def run(self, port=WEB_PORT, *middleware):
+  def run(self, *middleware):
     func = self.wsgifunc(*middleware)
-    return web.httpserver.runsimple(func, ('0.0.0.0', port))
+    return web.httpserver.runsimple(func, ('0.0.0.0', WEB_PORT))
 
 def sendJsonData(data):
   web.header('Content-Type', 'application/json')

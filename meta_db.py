@@ -20,7 +20,7 @@
 import sqlite3
 from utils.db import deviceToKey, keyToDevice, ip2long, long2ip
 
-META_DB = "meta.db"
+META_DB = "data/meta.db"
 
 class MetaDB():
   def __init__(self):

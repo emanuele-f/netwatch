@@ -20,7 +20,7 @@
 import sqlite3
 from utils.db import deviceToKey, keyToDevice
 
-PRESENCE_DB = "presence.db"
+PRESENCE_DB = "data/presence.db"
 RESOLUTION = 60
 
 class PresenceDB():

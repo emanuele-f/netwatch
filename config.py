@@ -19,7 +19,7 @@
 import json
 import errno
 
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "data/config.json"
 DEVICES_CONFIG_SECTION = "devices"
 USERS_CONFIG_SECTION = "users"
 GLOBAL_CONFG_SECTION = "global"

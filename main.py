@@ -177,11 +177,12 @@ def mainLoop():
 
     if now >= next_slot:
       # Remove old jobs
-      while not scanner_msgqueue.empty():
-        try:
-          scanner_msgqueue.get(False)
-        except QueueEmpty:
-          break
+      if scanner_msgqueue:
+        while not scanner_msgqueue.empty():
+          try:
+            scanner_msgqueue.get(False)
+          except QueueEmpty:
+            break
 
       insertHostsDataPoint(prev_slot)
       prev_hosts = next_hosts
@@ -194,8 +195,9 @@ def mainLoop():
       config.reload()
 
       if config.getPeriodicDiscoveryEnabled():
-        scanner_msgqueue.put("net_scan")
-        log.debug("Peridoc ARP scan queued")
+        if scanner_msgqueue:
+          scanner_msgqueue.put("net_scan")
+          log.debug("Peridoc ARP scan queued")
       else:
         for host in prev_hosts:
           try:
@@ -204,8 +206,9 @@ def mainLoop():
             max_time = next_slot - now - 1
             if (max_time >= 5) and (config.getDeviceProbeEnabled(prev_hosts[host].mac)):
               host = prev_hosts[host].ip
-              scanner_msgqueue.put(host)
-              log.debug("Host " + host + " ARP scan queued")
+              if scanner_msgqueue:
+                scanner_msgqueue.put(host)
+                log.debug("Host " + host + " ARP scan queued")
       poke_started = True
 
     for messages in manager.getMessages():
@@ -238,6 +241,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('-u', dest="user", default="root", help='user:group to drop privileges to (default: do not drop privileges)')
   parser.add_argument('-i', dest="interface", default=network_interface, help='network interface to monitor (default: ' + network_interface + ')')
+  parser.add_argument('-p', dest="passive", action='store_true', default=False, help="run in passive mode (do not send probes)")
 
   args = parser.parse_args(sys.argv[1:])
 
@@ -256,7 +260,15 @@ if __name__ == "__main__":
   if (drop_user != "root") and (drop_group != "root"):
     dropPrivileges(drop_user, drop_group)
   else:
-    log.warning("Privileges will *not* be dropped, this could be dangerous!")
+    log.warning("Privileges will *not* be dropped, this could be dangerous! Use the '-u' option instead.")
+
+  # Create data directory
+  if not os.path.isdir("data"):      
+    try:
+      os.mkdir("data")
+    except OSError:
+      log.error("Could not create the data directory")
+      exit(1)
 
   log.debug("Loading modules...")
 
@@ -275,13 +287,14 @@ if __name__ == "__main__":
   manager = JobsManager({
     "interface": args.interface,
   })
-  scanner_msgqueue = manager.newQueue()
 
   log.debug("Starting packets reader...")
   manager.runJob(PacketsReaderJob())
 
-  log.debug("Starting ARP scanner...")
-  manager.runJob(ARPScannerJob(), (scanner_msgqueue,))
+  if not args.passive:
+    log.debug("Starting ARP scanner...")
+    scanner_msgqueue = manager.newQueue()
+    manager.runJob(ARPScannerJob(), (scanner_msgqueue,))
 
   log.debug("Starting web server...")
   manager.runJob(WebServerJob())
