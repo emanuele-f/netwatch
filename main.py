@@ -1,7 +1,7 @@
-#!/bin/env python2
+#!/bin/env python3
 #
 # netwatch
-# (C) 2017-18 Emanuele Faranda
+# (C) 2017-20 Emanuele Faranda
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ import errno
 import subprocess
 import re
 import config
-from Queue import Empty as QueueEmpty
+from queue import Empty as QueueEmpty
 
 TIME_SLOT = 60
 REMAINING_BEFORE_POKE = 20
@@ -150,7 +150,7 @@ def guessMainInterface():
   output = subprocess.check_output(['ip', '-4', 'route', 'list', '0/0'])
 
   if output:
-    parts = output.split()
+    parts = output.decode("ascii").split()
     is_next = False
 
     for part in parts:
@@ -211,9 +211,8 @@ def mainLoop():
                 log.debug("Host " + host + " ARP scan queued")
       poke_started = True
 
-    for messages in manager.getMessages():
-      for message in messages:
-        handleHost(message.mac, message.ip, message.seen_tstamp, message.host_name)
+    for message in manager.getMessages():
+      handleHost(message.mac, message.ip, message.seen_tstamp, message.host_name)
 
     now = int(time.time())
 
@@ -236,6 +235,8 @@ def dropPrivileges(drop_user, drop_group):
 if __name__ == "__main__":
   import utils.privs as priv_utils
 
+  initLogging()
+
   network_interface = guessMainInterface()
 
   parser = argparse.ArgumentParser()
@@ -254,8 +255,6 @@ if __name__ == "__main__":
     drop_group = args.user
   else:
     drop_user, drop_group = args.user.split(":")
-
-  initLogging()
 
   if (drop_user != "root") and (drop_group != "root"):
     dropPrivileges(drop_user, drop_group)
@@ -276,7 +275,7 @@ if __name__ == "__main__":
   from packets_reader import PacketsReaderJob
   from arp_scanner import ARPScannerJob
   from presence_db import PresenceDB
-  from webserver import WebServerJob
+  # ~ from webserver import WebServerJob
   from meta_db import MetaDB
 
   log.debug("Initializing database...")
@@ -296,8 +295,8 @@ if __name__ == "__main__":
     scanner_msgqueue = manager.newQueue()
     manager.runJob(ARPScannerJob(), (scanner_msgqueue,))
 
-  log.debug("Starting web server...")
-  manager.runJob(WebServerJob())
+  # ~ log.debug("Starting web server...")
+  # ~ manager.runJob(WebServerJob())
 
   log.info("Running main loop...")
   initSignals()

@@ -247,19 +247,18 @@ static PyMethodDef ArpScannerMethods[] = {
   {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 
-#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
-
-PyMODINIT_FUNC initarp_scanner() {
+PyMODINIT_FUNC PyInit_arp_scanner() {
   if (PyType_Ready(&arp_scannerType) < 0)
-    return;
+    return(NULL);
 
   arp_scannerType.tp_new = PyType_GenericNew;
 
-  Py_InitModule("arp_scanner", ArpScannerMethods);
-}
+  static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT, "arp_scanner", NULL /* doc */, -1, ArpScannerMethods,
+  };
 
+  return(PyModule_Create(&moduledef));
+}
 
 /* ************************************************************ */
 

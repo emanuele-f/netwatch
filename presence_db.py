@@ -1,7 +1,7 @@
-#!/bin/env python2
+#!/bin/env python3
 #
 # netwatch
-# (C) 2017-18 Emanuele Faranda
+# (C) 2017-20 Emanuele Faranda
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ class PresenceDB():
   def _getIntervals(self, devices_to_tstamp, interval_edge):
     hosts_intervals = {}
 
-    for device, tstamps in devices_to_tstamp.iteritems():      
+    for device, tstamps in devices_to_tstamp.items():
       interval_start = None
       interval_end = None
       intervals = []

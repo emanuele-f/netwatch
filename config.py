@@ -1,6 +1,6 @@
 #
 # netwatch
-# (C) 2017-18 Emanuele Faranda
+# (C) 2017-20 Emanuele Faranda
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ def _loadData(force_reload = False):
 
     macs_upper = {}
 
-    for mac, mac_data in data[DEVICES_CONFIG_SECTION].iteritems():
+    for mac, mac_data in data[DEVICES_CONFIG_SECTION].items():
       macs_upper[mac.upper()] = mac_data
 
     data[DEVICES_CONFIG_SECTION] = macs_upper
@@ -77,7 +77,7 @@ def _writeConfigNode(root, key, value, overwrite=True):
   return True
 
 def _usersRemoveDevice(mac):
-  for user, value in data[USERS_CONFIG_SECTION].iteritems():
+  for user, value in data[USERS_CONFIG_SECTION].items():
     if mac in value["devices"]:
       value["devices"].remove(mac)
 
@@ -88,7 +88,7 @@ def _userAddDevice(user, mac):
     value["devices"].append(mac)
 
 def getDeviceUser(mac):
-  for user, value in data[USERS_CONFIG_SECTION].iteritems():
+  for user, value in data[USERS_CONFIG_SECTION].items():
     if mac in value["devices"]:
       return user
   return None

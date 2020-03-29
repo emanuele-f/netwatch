@@ -1,6 +1,6 @@
 /*
  * netwatch
- * (C) 2017-18 Emanuele Faranda
+ * (C) 2017-20 Emanuele Faranda
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -353,10 +353,10 @@ static PyObject *read_packet_info(PyObject *self, PyObject *args) {
   if (! dict)
     return NULL;
 
-  if (mac_buf[0]) PyDict_SetItemString(dict, "mac", PyString_FromString(mac_buf));
-  if (ip_buf[0]) PyDict_SetItemString(dict, "ip", PyString_FromString(ip_buf));
-  if (name_buf[0]) PyDict_SetItemString(dict, "name", PyString_FromString(name_buf));
-  if (dns_buf[0]) PyDict_SetItemString(dict, "query", PyString_FromString(dns_buf));
+  if (mac_buf[0]) PyDict_SetItemString(dict, "mac", PyUnicode_FromString(mac_buf));
+  if (ip_buf[0]) PyDict_SetItemString(dict, "ip", PyUnicode_FromString(ip_buf));
+  if (name_buf[0]) PyDict_SetItemString(dict, "name", PyUnicode_FromString(name_buf));
+  if (dns_buf[0]) PyDict_SetItemString(dict, "query", PyUnicode_FromString(dns_buf));
 
   return dict;
 }
@@ -368,17 +368,18 @@ static PyMethodDef PktReaderMethods[] = {
   {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 
-#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
 
-PyMODINIT_FUNC initpkt_reader() {
+PyMODINIT_FUNC PyInit_pkt_reader() {
   if (PyType_Ready(&pkt_readerType) < 0)
-    return;
+    return(NULL);
 
   pkt_readerType.tp_new = PyType_GenericNew;
 
-  Py_InitModule("pkt_reader", PktReaderMethods);
+  static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT, "pkt_reader", NULL /* doc */, -1, PktReaderMethods,
+  };
+
+  return(PyModule_Create(&moduledef));
 }
 
 /* ************************************************************ */

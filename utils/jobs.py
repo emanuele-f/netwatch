@@ -1,6 +1,6 @@
 #
 # netwatch
-# (C) 2017-18 Emanuele Faranda
+# (C) 2017-20 Emanuele Faranda
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 # NOTE: use multiprocessing instead of threading to make things go smooth
 # The Global Interpreter Lock slows down web server a lot!
 from multiprocessing import Queue, Event, Process
-from Queue import Empty as QueueEmpty
+from queue import Empty as QueueEmpty
 import signal
 import os
 
@@ -64,7 +64,7 @@ class JobsManager:
   def _checkJoin(self, wait=False):
     jobs_removed = []
 
-    for job_id, job in self.running.iteritems():
+    for job_id, job in self.running.items():
       if wait or (not job.thread.is_alive()):
         job.thread.join()
         jobs_removed.append(job_id)
@@ -111,19 +111,19 @@ class JobsManager:
 
   def getRunning(self):
     self._checkJoin()
-    return [job.job for job_id, job in self.running.iteritems() if job.thread.is_alive()]
+    return [job.job for job_id, job in self.running.items() if job.thread.is_alive()]
 
   def terminate(self):
     self._checkJoin()
 
-    for job_id, job in self.running.iteritems():
+    for job_id, job in self.running.items():
       if job.thread.is_alive():
         job.job.askTerminate()
 
   def kill(self):
     self._checkJoin()
 
-    for job_id, job in self.running.iteritems():
+    for job_id, job in self.running.items():
       if job.thread.is_alive():
         job.thread.terminate()
 

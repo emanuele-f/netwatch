@@ -1,7 +1,7 @@
-#!/bin/env python2
+#!/bin/env python3
 #
 # netwatch
-# (C) 2017-18 Emanuele Faranda
+# (C) 2017-20 Emanuele Faranda
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ class timeline:
     min_time = resToMinTime(resolution)
 
     data = []
-    for device, intervals in presence_data.iteritems():
+    for device, intervals in presence_data.items():
       name = device
       name_on_packet = ""
 

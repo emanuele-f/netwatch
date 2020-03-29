@@ -1,7 +1,7 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 #
 # netwatch
-# (C) 2017-18 Emanuele Faranda
+# (C) 2017-20 Emanuele Faranda
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
 
 import time
 import os
-from Queue import Empty as QueueEmpty
 import subprocess
+from queue import Empty as QueueEmpty
 
 from utils.jobs import Job
 from utils.privs import acquire_capabilities

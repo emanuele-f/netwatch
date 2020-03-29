@@ -1,6 +1,6 @@
 #
 # netwatch
-# (C) 2017-18 Emanuele Faranda
+# (C) 2017-20 Emanuele Faranda
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ def countActiveUserDevices(devices_list, meta_db):
 def getDevicesData(meta_db):
   res = []
 
-  for mac, value in config.getConfiguredDevices().iteritems():
+  for mac, value in config.getConfiguredDevices().items():
     metadata = meta_db.query(mac)
     device_ip = "-"
     device_active = "false"
@@ -70,7 +70,7 @@ def getDevicesData(meta_db):
 def getUsersData(meta_db):
   res = []
 
-  for username, value in config.getConfiguredUsers().iteritems():
+  for username, value in config.getConfiguredUsers().items():
     num_active_devices, num_activity_devices = countActiveUserDevices(value["devices"], meta_db)
 
     res.append({
