@@ -1,9 +1,12 @@
-$def with (config)
-$var page: Devices
-$ show_active_probe = "true" if not config.getPeriodicDiscoveryEnabled() else "false"
-$ active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else ""
-$ users = config.getConfiguredUsers()
+{% extends 'layout.html' %}
 
+{% set page = "Devices" %}
+
+{% set show_active_probe = "true" if not config.getPeriodicDiscoveryEnabled() else "false" %}
+{% set active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else "" %}
+{% set users = config.getConfiguredUsers() %}
+
+{% block content %}
 <div class="modal fade" id="addDeviceDialog" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
@@ -31,7 +34,7 @@ $ users = config.getConfiguredUsers()
             </label>
             <small id="userActivityHelp2" class="form-text text-muted">When this device is active its user will be online.</small>
           </div>
-          <div class="form-check $active_probe_hidden">
+          <div class="form-check {{ active_probe_hidden }}">
             <label class="form-check-label">
               <input type="checkbox" class="form-check-input" name="active_ping" aria-describedby="activePingHelp">
               Active Probe
@@ -70,8 +73,9 @@ $ users = config.getConfiguredUsers()
             <select id="macToEdit_user" name="user" class="form-control">
               <option value="">Others</option>
 
-              $for user in users:
+              {% for user in users %}
                 <option value="$user">$user</option>
+              {% endfor %}
             </select>
           </div>
           <div class="form-check">
@@ -81,7 +85,7 @@ $ users = config.getConfiguredUsers()
             </label>
             <small id="userActivityHelp" class="form-text text-muted">When this device is active its user will be online.</small>
           </div>
-          <div class="form-check $active_probe_hidden">
+          <div class="form-check {{ active_probe_hidden }}">
             <label class="form-check-label">
               <input id="macToEdit_ping" type="checkbox" class="form-check-input" name="active_ping" aria-describedby="activePingHelp2">
               Active Probe
@@ -133,20 +137,20 @@ $ users = config.getConfiguredUsers()
 
 <script>
   function populateEditDialog(row) {
-    $$('#macToEditPlaceholder').html(row.mac);
-    $$('#macToEdit').val(row.mac);
-    $$('#macToEdit_name').val(row.name);
-    $$('#macToEdit_user').val(row.user == "Others" ? "" : row.user);
-    $$('#macToEdit_ping').prop('checked', row.active_ping);
-    $$('#macToEdit_activity').prop('checked', row.trigger_activity);
+    $('#macToEditPlaceholder').html(row.mac);
+    $('#macToEdit').val(row.mac);
+    $('#macToEdit_name').val(row.name);
+    $('#macToEdit_user').val(row.user == "Others" ? "" : row.user);
+    $('#macToEdit_ping').prop('checked', row.active_ping);
+    $('#macToEdit_activity').prop('checked', row.trigger_activity);
   }
 
   function populateDeleteDialog(row) {
-    $$('#macToDeletePlaceholder').html(row.mac);
-    $$('#macToDelete').val(row.mac);
+    $('#macToDeletePlaceholder').html(row.mac);
+    $('#macToDelete').val(row.mac);
   }
 
-  $$('#devices-table').netwatchTable({
+  $('#devices-table').netwatchTable({
     url: 'data/devices.json',
     columns: [{
       field: 'mac',
@@ -178,7 +182,7 @@ $ users = config.getConfiguredUsers()
       field: 'active_ping',
       title: 'Active Probe',
       class: 'text-center',
-      visible: $show_active_probe,
+      visible: {{ show_active_probe }},
       formatter: function(value, row, index) {
         return value ? `<i class="fa fa-toggle-on"></i>` : `<i class="fa fa-toggle-off"></i>`;
       },
@@ -196,3 +200,4 @@ $ users = config.getConfiguredUsers()
   }],
  });
 </script>
+{% endblock %}

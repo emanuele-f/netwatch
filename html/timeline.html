@@ -1,13 +1,15 @@
-$def with (intervals_data, timestamp, timestamp_end, resolution, chart_min_time)
-$var page: Timeline
-$ time_format = "%b %Y" if (resolution == "1M") else "%d %b" if (resolution == "24h") else "%H:%M"
-$ colors = '["#4285f4",]'
+{% extends 'layout.html' %}
 
+{% set page = "Timeline" %}
+{% set time_format = "%b %Y" if (resolution == "1M") else "%d %b" if (resolution == "24h") else "%H:%M" %}
+{% set colors = '["#4285f4",]' %}
+
+{% block content %}
 <div class="container-fluid">
   <div class="row" style="margin-left: 20px;">
     <form>
-      <input type="hidden" name="ts" value="$timestamp" />
-      <input type="hidden" name="res" value="$resolution" />
+      <input type="hidden" name="ts" value="{{ timestamp }}" />
+      <input type="hidden" name="res" value="{{ resolution }}" />
       <div class="input-append date" id="datetimepicker" style="display:inline;">
         <input size="16" type="text" readonly/><button type="button" class="add-on" style="margin-left:-1px;"><i class="fa fa-th icon-th"></i></button>
       </div>
@@ -28,26 +30,26 @@ $ colors = '["#4285f4",]'
 </div>
 
 <script>
-  var picker = makeDateTimePicker("datetimepicker", $timestamp, "$resolution");
+  var picker = makeDateTimePicker("datetimepicker", {{ timestamp }}, "{{ resolution }}");
 
   var chart = d3.timeline();
-  data = $:intervals_data ;
+  data = {{ intervals_data|safe }};
 
   /* TODO show no data screen */
   if(data.length) {
-    chart.dates([new Date($timestamp * 1000), new Date($timestamp_end * 1000)]);
-    chart.colors($:colors);
-    chart.min_width($chart_min_time * 1000);
+    chart.dates([new Date({{ timestamp }} * 1000), new Date({{ timestamp_end }} * 1000)]);
+    chart.colors({{ colors|safe }});
+    chart.min_width({{ chart_min_time }} * 1000);
 
     chart.on_item_click(function(d, i) {
-      if ("$resolution" != "1m") {
+      if ("{{ resolution }}" != "1m") {
         picker.drillDown(d[2], 0);
-        $$("#datetimepicker").closest("form").submit();
+        $("#datetimepicker").closest("form").submit();
       }
     });
 
     chart.tooltip_render(function(d, i) {
-      var format = d3.isoParse.wrap(d3.timeFormat("$time_format"));
+      var format = d3.isoParse.wrap(d3.timeFormat("{{ time_format }}"));
       var dstart = format(d[2]);
       var dend = format(d[3]);
       var mac = d[4];
@@ -72,3 +74,4 @@ $ colors = '["#4285f4",]'
 
   d3.select('#timeline').datum(data).call(chart);
 </script>
+{% endblock %}

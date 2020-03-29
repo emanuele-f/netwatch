@@ -275,7 +275,7 @@ if __name__ == "__main__":
   from packets_reader import PacketsReaderJob
   from arp_scanner import ARPScannerJob
   from presence_db import PresenceDB
-  # ~ from webserver import WebServerJob
+  from webserver import WebServerJob
   from meta_db import MetaDB
 
   log.debug("Initializing database...")
@@ -295,8 +295,8 @@ if __name__ == "__main__":
     scanner_msgqueue = manager.newQueue()
     manager.runJob(ARPScannerJob(), (scanner_msgqueue,))
 
-  # ~ log.debug("Starting web server...")
-  # ~ manager.runJob(WebServerJob())
+  log.debug("Starting web server...")
+  manager.runJob(WebServerJob())
 
   log.info("Running main loop...")
   initSignals()

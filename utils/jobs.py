@@ -24,11 +24,12 @@ import signal
 import os
 
 class Job(object):
-  def __init__(self, idenfier, task):
+  def __init__(self, idenfier, task, force_kill=False):
     self.id = idenfier
     self.task = task
     self._stopped = Event()
     self.options = {}
+    self.force_kill = force_kill
 
   def askTerminate(self):
     self._stopped.set()
@@ -118,14 +119,17 @@ class JobsManager:
 
     for job_id, job in self.running.items():
       if job.thread.is_alive():
-        job.job.askTerminate()
+        if job.job.force_kill:
+          job.thread.kill()
+        else:
+          job.job.askTerminate()
 
   def kill(self):
     self._checkJoin()
 
     for job_id, job in self.running.items():
       if job.thread.is_alive():
-        job.thread.terminate()
+        job.thread.kill()
 
   def join(self, wait=False):
     self._checkJoin(wait)

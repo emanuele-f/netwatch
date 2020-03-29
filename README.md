@@ -21,7 +21,8 @@ a device basis or turn off periodic active scan to have a passive-only (stealth)
 In order to run Netwatch, you will need to satisfy the following dependencies:
 
 - python3
-- python-webpy
+- python-flask
+- python-waitress
 - python-pysqlite
 - python-prctl
 - libdnet
