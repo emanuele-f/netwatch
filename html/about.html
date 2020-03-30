@@ -1,5 +1,8 @@
-$var page: About
+{% extends 'layout.html' %}
 
+{% set page = "About" %}
+
+{% block content %}
 <div class="container-fluid content text">
   <div class="row-spaced">
     <b>Netwatch</b> - a tool to monitor the presence of the devices into a network.
@@ -34,3 +37,4 @@ $var page: About
     User images designed by <a href="https://www.flaticon.com/">Flaticon</a> &copy;
   </p>
 </div>
+{% endblock %}

@@ -294,6 +294,8 @@ if __name__ == "__main__":
     log.debug("Starting ARP scanner...")
     scanner_msgqueue = manager.newQueue()
     manager.runJob(ARPScannerJob(), (scanner_msgqueue,))
+  else:
+    log.info("Ignoring ARP scanner in passive mode")
 
   log.debug("Starting web server...")
   manager.runJob(WebServerJob())

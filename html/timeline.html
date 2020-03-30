@@ -1,6 +1,7 @@
 {% extends 'layout.html' %}
 
 {% set page = "Timeline" %}
+
 {% set time_format = "%b %Y" if (resolution == "1M") else "%d %b" if (resolution == "24h") else "%H:%M" %}
 {% set colors = '["#4285f4",]' %}
 

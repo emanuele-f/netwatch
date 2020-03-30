@@ -43,63 +43,8 @@ def resToMinTime(res):
   else:
     return 10
 
-class people:
-  def GET(self):
-    return template_render.people()
-
-  def POST(self):
-    data = web.input()
-    action = data.action
-    username = data.username
-    old_username = None
-
-    if (action == "add") or (action == "edit"):
-      avatar = data.avatar
-
-      if action == "edit":
-        old_username = data.old_username
-
-      config.addUser(username, avatar, old_username)
-    elif action == "delete":
-      config.deleteUser(username)
-
-    raise web.seeother('/people')
-
-class settings:
-  def GET(self):
-    return template_render.settings(config)
-
-  def POST(self):
-    data = web.input()
-    periodic_discovery = False
-
-    try:
-        periodic_discovery = data.periodic_discovery and True
-    except AttributeError: pass
-
-    config.setPeriodicDiscoveryEnabled(periodic_discovery)
-
-    raise web.seeother('/settings')
-
-class about:
-  def GET(self):
-    return template_render.about()
-
-class users_json:
-  def GET(self):
-    meta_db = MetaDB()
-    return jsonify(getUsersData(meta_db))
-
 class WebServerJob(Job):
   def __init__(self):
-    # TODO migrate
-    urls = (
-      '/people', 'people',
-      '/settings', 'settings',
-      '/about', 'about',
-      '/data/users.json', 'users_json',
-    )
-
     # Manual termination not working. Also tried
     # https://github.com/Pylons/webtest/blob/af67b92c40d29dc9f4d7b0a6f5742b263fb2a227/tests/test_http.py
     # without luck. For now just kill the server brutally.
@@ -114,6 +59,12 @@ class WebServerJob(Job):
     self.app.route('/devices', methods=['POST'])(self.POST_Devices)
     self.app.route('/data/devices.json', methods=['GET'])(self.GET_Devices_JSON)
     self.app.route('/<path:path>', methods=['GET'])(self.GET_Static)
+    self.app.route('/people', methods=['GET'])(self.GET_People)
+    self.app.route('/people', methods=['POST'])(self.POST_People)
+    self.app.route('/data/users.json', methods=['GET'])(self.GET_People_JSON)
+    self.app.route('/settings', methods=['GET'])(self.GET_Settings)
+    self.app.route('/settings', methods=['POST'])(self.POST_Settings)
+    self.app.route('/about', methods=['GET'])(self.GET_About)
 
   def GET_Static(self, path):
     return send_from_directory('js', path)
@@ -193,6 +144,43 @@ class WebServerJob(Job):
       config.deleteDevice(mac)
 
     return redirect(url_for('GET_Devices'), code=303)
+
+  def GET_People(self):
+    return render_template('people.html')
+
+  def GET_People_JSON(self):
+    meta_db = MetaDB()
+    return jsonify(getUsersData(meta_db))
+
+  def POST_People(self):
+    action = request.form.get('action')
+    username = request.form.get('username')
+    old_username = None
+
+    if (action == "add") or (action == "edit"):
+      avatar = request.form.get('avatar')
+
+      if action == "edit":
+        old_username = request.form.get('old_username')
+
+      config.addUser(username, avatar, old_username)
+    elif action == "delete":
+      config.deleteUser(username)
+
+    return redirect(url_for('GET_People'), code=303)
+
+  def GET_About(self):
+    return render_template('about.html')
+
+  def GET_Settings(self):
+    return render_template('settings.html', config=config)
+
+  def POST_Settings(self):
+    periodic_discovery = request.form.get('periodic_discovery') and True or False
+
+    config.setPeriodicDiscoveryEnabled(periodic_discovery)
+
+    return redirect(url_for('GET_Settings'), code=303)
 
   def run(self, *args):
     waitress.serve(self.app, port=WEB_PORT, threads=8)

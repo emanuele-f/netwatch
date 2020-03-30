@@ -1,11 +1,11 @@
-$var page: People
+{% extends 'layout.html' %}
 
-$ default_user_avatar = "static/png/001-man-13.png"
+{% set page = "People" %}
 
-$ user_images = ["001-man-13.png", "002-woman-14.png", "004-woman-12.png", "007-woman-9.png", "010-woman-6.png", "013-woman-3.png", "016-man-10.png", "019-man-7.png", "022-man-4.png", "025-man-1.png", "028-boy-5.png", "031-boy-2.png", "034-woman-2.png", "005-woman-11.png", "008-woman-8.png", "011-woman-5.png", "014-man-12.png", "017-man-9.png", "020-man-6.png", "023-man-3.png", "026-man.png", "029-boy-4.png", "032-boy-1.png", "035-woman-1.png", "003-woman-13.png", "006-woman-10.png", "009-woman-7.png", "012-woman-4.png", "015-man-11.png", "018-man-8.png", "021-man-5.png", "024-man-2.png", "027-boy-6.png", "033-boy.png", "036-woman.png"]
+{% set default_user_avatar = "static/png/001-man-13.png" %}
+{% set user_images = ["001-man-13.png", "002-woman-14.png", "004-woman-12.png", "007-woman-9.png", "010-woman-6.png", "013-woman-3.png", "016-man-10.png", "019-man-7.png", "022-man-4.png", "025-man-1.png", "028-boy-5.png", "031-boy-2.png", "034-woman-2.png", "005-woman-11.png", "008-woman-8.png", "011-woman-5.png", "014-man-12.png", "017-man-9.png", "020-man-6.png", "023-man-3.png", "026-man.png", "029-boy-4.png", "032-boy-1.png", "035-woman-1.png", "003-woman-13.png", "006-woman-10.png", "009-woman-7.png", "012-woman-4.png", "015-man-11.png", "018-man-8.png", "021-man-5.png", "024-man-2.png", "027-boy-6.png", "033-boy.png", "036-woman.png"] %}
 
-$ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class='btn btn-secondary'><img src='static/png/%s'></a>" % image for image in user_images]) + "</div>"
-
+{% block content %}
 <div class="modal fade" id="addUserDialog"" tabindex="-1" role="dialog" aria-labelledby="addUserTitle" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
@@ -20,8 +20,10 @@ $ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class=
           <input id="user-mod-action" type="hidden" name="action" value="add" />
           <input id="user-old-username" type="hidden" name="old_username">
 
-          <input id="user-image-current" type="hidden" name="avatar" value="$default_user_avatar">
-          <img id="user-image-picked" class="img-thumbnail rounded-circle" rel="popover" src="$default_user_avatar" data-content="$image_picker_content">
+          <input id="user-image-current" type="hidden" name="avatar" value="{{ default_user_avatar }}">
+          <img id="user-image-picked" class="img-thumbnail rounded-circle" rel="popover" src="{{ default_user_avatar }}" data-content="<div class='user-image-picker'>{% for image in user_images -%}
+	<a class='btn btn-secondary'><img src='static/png/{{ image }}'></a>
+{%- endfor %}</div>">
 
           <div class="form-group">
             <label for="user-username">Name</label>
@@ -72,37 +74,37 @@ $ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class=
 
 <script>
   function populateAddDialog() {
-    $$('#user-old-username').closest("form").get(0).reset();
-    $$('#user-mod-action').val("add");
-    $$('#user-image-current').val("$default_user_avatar");
-    $$('#user-image-picked').attr("src", "$default_user_avatar");
-    $$('#addUserTitle').html("Add User");
-    $$('#add-user-submit').html("Add User");
+    $('#user-old-username').closest("form").get(0).reset();
+    $('#user-mod-action').val("add");
+    $('#user-image-current').val("{{ default_user_avatar }}");
+    $('#user-image-picked').attr("src", "{{ default_user_avatar }}");
+    $('#addUserTitle').html("Add User");
+    $('#add-user-submit').html("Add User");
   }
 
   function populateEditDialog(row) {
-    $$('#user-mod-action').val("edit");
-    $$('#user-old-username').val(row.name);
-    $$('#user-username').val(row.name);
-    $$('#user-image-current').val(row.icon || "$default_user_avatar");
-    $$('#user-image-picked').attr("src", row.icon || "$default_user_avatar");
-    $$('#addUserTitle').html("Edit User");
-    $$('#add-user-submit').html("Edit User");
+    $('#user-mod-action').val("edit");
+    $('#user-old-username').val(row.name);
+    $('#user-username').val(row.name);
+    $('#user-image-current').val(row.icon || "{{ default_user_avatar }}");
+    $('#user-image-picked').attr("src", row.icon || "{{ default_user_avatar }}");
+    $('#addUserTitle').html("Edit User");
+    $('#add-user-submit').html("Edit User");
   }
 
   function populateDeleteDialog(row) {
-    $$('#userToDeletePlaceholder').html(row.name);
-    $$('#userToDelete').val(row.name);
+    $('#userToDeletePlaceholder').html(row.name);
+    $('#userToDelete').val(row.name);
   }
 
-  $$('#users-table').netwatchTable({
+  $('#users-table').netwatchTable({
     url: 'data/users.json',
     columns: [{
       title: 'Name',
       field: 'name',
       sortable: true,
       formatter: function(value, row, index) {
-        return '<img src="' + (row.icon || "$default_user_avatar") + '" class="img-thumbnail rounded-circle user-name-icon"> ' + row.name;
+        return '<img src="' + (row.icon || "{{ default_user_avatar }}") + '" class="img-thumbnail rounded-circle user-name-icon"> ' + row.name;
       }
     }, {
       field: 'active',
@@ -135,30 +137,31 @@ $ image_picker_content = "<div class='user-image-picker'>" + "".join(["<a class=
 
   });
 
-  $$('[rel=popover]').popover({
+  $('[rel=popover]').popover({
     html: true,
     trigger: 'click',
     placement: 'bottom',
   });
 
   // Handle user image picker interactions
-  $$(document).on("mouseenter", ".user-image-picker a", function() {
-    var image = $$(this).find("img").attr("src");
-    $$("#user-image-picked").attr("src", image);
+  $(document).on("mouseenter", ".user-image-picker a", function() {
+    var image = $(this).find("img").attr("src");
+    $("#user-image-picked").attr("src", image);
   });
 
-  $$(document).on("mouseleave", ".user-image-picker a", function() {
-    var image = $$(this).find("img").attr("src");
-    var shown = $$("#user-image-picked").attr("src");
+  $(document).on("mouseleave", ".user-image-picker a", function() {
+    var image = $(this).find("img").attr("src");
+    var shown = $("#user-image-picked").attr("src");
 
     if (image == shown)
-      $$("#user-image-picked").attr("src", $$("#user-image-current").val());
+      $("#user-image-picked").attr("src", $("#user-image-current").val());
   });
 
-  $$(document).on("click", ".user-image-picker a", function() {
-    var image = $$(this).find("img").attr("src");
-    $$("#user-image-current").val(image);
-    $$("#user-image-picked").attr("src", image);
-    $$(this).closest(".popover").popover('hide');
+  $(document).on("click", ".user-image-picker a", function() {
+    var image = $(this).find("img").attr("src");
+    $("#user-image-current").val(image);
+    $("#user-image-picked").attr("src", image);
+    $(this).closest(".popover").popover('hide');
   });
 </script>
+{% endblock %}
