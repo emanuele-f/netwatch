@@ -24,20 +24,37 @@
 #include <pcap.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
+#include <net/if.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
 
 #include "headers.h"
 
 #define SNAPLEN 1024
 #define PROMISC 1
-#define MAC_BUF_SIZE 18
-#define IP_BUF_SIZE INET_ADDRSTRLEN
-#define NAME_BUF_SIZE 64
-#define DNS_QUERY_SIZE 128
 
 #define min(x, y) ((x) <= (y) ? (x) : (y))
 
 //#define DEBUG
 //#define USE_SAMPLE_PCAP
+
+typedef struct {
+  char mac_buf[18];
+  char ip_buf[INET_ADDRSTRLEN];
+  char name_buf[64];
+  char dns_buf[128];
+  char proto[32];
+} PacketInfo;
+
+typedef struct {
+  PyObject_HEAD
+
+  pcap_t *handle;
+  u_char iface_mac[6];
+  u_char gateway_mac[6];
+  uint32_t gateway_ip;
+} pkt_readerObject;
 
 /* ************************************************************ */
 
@@ -47,6 +64,12 @@ static char* format_mac(u_char *mac, char *buf, int buf_len) {
     mac[2] & 0xFF, mac[3] & 0xFF,
     mac[4] & 0xFF, mac[5] & 0xFF);
   return(buf);
+}
+
+static int parse_mac(const char *m, u_char *parsed) {
+  return(sscanf(m, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+    &parsed[0], &parsed[1], &parsed[2],
+    &parsed[3], &parsed[4], &parsed[5]) == 6);
 }
 
 /* ************************************************************ */
@@ -123,7 +146,7 @@ static void _close_capture_dev(pcap_t *handle) {
  * When 1 is retuned, the mac_buf and ip_buf parameters will be filled accordingly.
  * When 1 is retuned, the name_buf will only be set if a relevant name as been found.
  */
-static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *name_buf, char *dns_query) {
+static int _read_packet_info(pcap_t *handle, PacketInfo *pinfo) {
   struct pcap_pkthdr header;
   struct in_addr ip_addr;
   struct arphdr *arp;
@@ -148,12 +171,14 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
               && (ntohs(arp->ptype) == PROTOCOL_TYPE_IP)) {
         if ((ntohs(arp->oper) == ARP_REQUEST) || (ntohs(arp->oper) == ARP_REPLY)) {
           ip_addr.s_addr = *((u_int32_t*) arp->spa);
-          inet_ntop(AF_INET, &ip_addr, ip_buf, IP_BUF_SIZE);
-          format_mac(arp->sha, mac_buf, MAC_BUF_SIZE);
+          inet_ntop(AF_INET, &ip_addr, pinfo->ip_buf, sizeof(pinfo->ip_buf));
+          format_mac(arp->sha, pinfo->mac_buf, sizeof(pinfo->mac_buf));
+
+          strcpy(pinfo->proto, ((ntohs(arp->oper) == ARP_REQUEST) ? "ARP_REQ" : "ARP_REP"));
 
 #ifdef DEBUG
           printf("Got an %d bytes ARP packet\n", header.len);
-          printf("From %s (%s) %s\n", ip_buf, mac_buf, (ntohs(arp->oper) == ARP_REQUEST)? "ARP Request" : "ARP Reply");
+          printf("From %s (%s) %s\n", pinfo->ip_buf, pinfo->mac_buf, pinfo->proto);
 #endif
 
           return 1;
@@ -167,12 +192,12 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
         len -= iphdr_len;
 
         if(ip_header->ip_v == IPVERSION) {
-          inet_ntop(AF_INET, &ip_header->ip_src, ip_buf, IP_BUF_SIZE);
-          format_mac(eth_header->h_source, mac_buf, MAC_BUF_SIZE);
+          inet_ntop(AF_INET, &ip_header->ip_src, pinfo->ip_buf, sizeof(pinfo->ip_buf));
+          format_mac(eth_header->h_source, pinfo->mac_buf, sizeof(pinfo->mac_buf));
 
 #ifdef DEBUG
           printf("Got a %d bytes IPv4 [iphdr_len=%d] packet\n", header.len, iphdr_len);
-          printf("From %s (%s)\n", ip_buf, mac_buf);
+          printf("From %s (%s)\n", pinfo->ip_buf, pinfo->mac_buf);
 #endif
 
           if ((ip_header->ip_p == IP_PROTO_UDP) && (len >= sizeof(struct udphdr))) {
@@ -220,14 +245,17 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
 
                 if ((request.request_type == DHCP_OPTION_MESSAGE_TYPE_REQUEST) && (request.requested_ip != 0)) {
                   ip_addr.s_addr = htonl(request.requested_ip);
-                  inet_ntop(AF_INET, &ip_addr, ip_buf, IP_BUF_SIZE);
+                  inet_ntop(AF_INET, &ip_addr, pinfo->ip_buf, sizeof(pinfo->ip_buf));
 
                   if(request.host_name_ptr != NULL) {
-                    strncpy(name_buf, (char*)request.host_name_ptr, min(NAME_BUF_SIZE-1, request.host_name_len));
-                    name_buf[min(NAME_BUF_SIZE-1, request.host_name_len)] = '\0';
+                    strncpy(pinfo->name_buf, (char*)request.host_name_ptr, min(sizeof(pinfo->name_buf)-1, request.host_name_len));
+                    pinfo->name_buf[min(sizeof(pinfo->name_buf)-1, request.host_name_len)] = '\0';
                   }
+
+                  strcpy(pinfo->proto, "DHCP_REQ");
+
 #ifdef DEBUG
-                  printf("DHCP REQUEST: %s %s\n", ip_buf, request.host_name_ptr ? name_buf : "");
+                  printf("DHCP REQUEST: %s %s\n", pinfo->ip_buf, request.host_name_ptr ? pinfo->name_buf : "");
 #endif
                 } else
                   return 0;
@@ -240,7 +268,7 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
               if(((ntohs(dns->flags) & DNS_FLAGS_MASK) == DNS_TYPE_REQUEST) && ntohs(dns->questions >= 1)) {
                 int i;
 
-                for(i=0; i<min(DNS_QUERY_SIZE-1, len); i++) {
+                for(i=0; i<min(sizeof(pinfo->dns_buf)-1, len); i++) {
                   char c = dns->queries[i];
 
                   if(!c)
@@ -248,11 +276,14 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
                   else if(c < ' ')
                     c = '.';
 
-                  dns_query[i] = c;
+                  pinfo->dns_buf[i] = c;
                 }
 
-                dns_query[i] = '\0';
-                //printf("DNS REQUEST: %s %s\n", ip_buf, dns_query);
+                pinfo->dns_buf[i] = '\0';
+
+                strcpy(pinfo->proto, "DNS_REQ");
+
+                //printf("DNS REQUEST: %s %s\n", ip_buf, pinfo->dns_buf);
               }
             }
           }
@@ -268,11 +299,30 @@ static int _read_packet_info(pcap_t *handle, char *mac_buf, char *ip_buf, char *
 
 /* ************************************************************ */
 
-typedef struct {
-  PyObject_HEAD
+static int _send_spoofed_arp(pkt_readerObject *reader,
+        u_int32_t target_ip, u_char *target_mac, int op_type) {
+  struct arppkt arp;
 
-  pcap_t *handle;
-} pkt_readerObject;
+  /* Ethernet */
+  arp.proto = htons(0x0806);
+  memcpy(arp.dst_mac, target_mac, sizeof(arp.dst_mac));
+  memcpy(arp.src_mac, &reader->iface_mac, sizeof(arp.src_mac));
+
+  /* ARP */
+  arp.arph.htype = htons(1);
+  arp.arph.ptype = htons(0x0800);
+  arp.arph.hlen = 6;
+  arp.arph.plen = 4;
+  arp.arph.oper = htons(op_type);
+  *((u_int32_t *)&arp.arph.spa) = reader->gateway_ip;
+  *((u_int32_t *)&arp.arph.tpa) = target_ip;
+  memcpy(arp.arph.tha, target_mac, sizeof(arp.dst_mac));
+  memcpy(arp.arph.sha, &reader->iface_mac, sizeof(arp.src_mac));
+
+  return pcap_sendpacket(reader->handle, (u_char*)&arp, sizeof(arp));
+}
+
+/* ************************************************************ */
 
 static PyTypeObject pkt_readerType = {
   PyVarObject_HEAD_INIT(NULL, 0)
@@ -295,13 +345,92 @@ static PyTypeObject pkt_readerType = {
   0,                         /* tp_setattro */
   0,                         /* tp_as_buffer */
   Py_TPFLAGS_DEFAULT,        /* tp_flags */
-  "A wrapper on the pcap handle",           /* tp_doc */
+  "A reader on the pcap handle",           /* tp_doc */
 };
+
+/* ************************************************************ */
+
+static int get_gateway_info(uint32_t *gateway_ip, u_char *gateway_mac) {
+  FILE *fd;
+  char *token = NULL;
+  char *gateway_ip_str = NULL;
+  char buf[256];
+  u_int8_t mac_ok = 0;
+
+  if(!(fd = fopen("/proc/net/route", "r")))
+    return(-1);
+
+  // Gateway IP
+  while(fgets(buf, sizeof(buf), fd)) {
+    if(strtok(buf, "\t") && (token = strtok(NULL, "\t")) && (!strcmp(token, "00000000"))) {
+      token = strtok(NULL, "\t");
+
+      if(token) {
+        struct in_addr addr;
+
+        addr.s_addr = strtoul(token, NULL, 16);
+        gateway_ip_str = inet_ntoa(addr);
+
+        if(gateway_ip_str) {
+          *gateway_ip = addr.s_addr;
+          break;
+        }
+      }
+    }
+  }
+
+  fclose(fd);
+
+  if(!gateway_ip_str)
+    return(-2);
+
+  if(!(fd = fopen("/proc/net/arp", "r")))
+    return(-3);
+
+  // Gateway MAC address
+  while(fgets(buf, sizeof(buf), fd)) {
+    if((token = strtok(buf, " ")) && !strcmp(token, gateway_ip_str)) {
+      if(strtok(NULL, " ") && strtok(NULL, " ") && (token = strtok(NULL, " "))) {
+        mac_ok = parse_mac(token, gateway_mac);
+        break;
+      }
+    }
+  }
+
+  fclose(fd);
+
+  if(!mac_ok)
+    return(-4);
+
+  return(0);
+}
+
+/* ************************************************************ */
+
+static int get_interface_mac_address(const char *iface, u_char *mac) {
+  struct ifreq ifr;
+  int fd;
+  int rv;
+
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+  ifr.ifr_addr.sa_family = AF_INET;
+  strncpy((char *)ifr.ifr_name, iface, IFNAMSIZ-1);
+
+  if((rv = ioctl(fd, SIOCGIFHWADDR, &ifr)) != -1)
+    memcpy(mac, ifr.ifr_hwaddr.sa_data, 8);
+
+  close(fd);
+  return(rv);
+}
+
+/* ************************************************************ */
 
 static PyObject *open_capture_dev(PyObject *self, PyObject *args) {
   const char *devname, *filter_exp;
   int read_timeout;
   int immediate_mode;
+  int rv;
   pcap_t *handle;
 
   if (!PyArg_ParseTuple(args, "sisb", &devname, &read_timeout, &filter_exp, &immediate_mode))
@@ -312,62 +441,157 @@ static PyObject *open_capture_dev(PyObject *self, PyObject *args) {
   if (!handle)
     return NULL;
 
-  pkt_readerObject* wrapper;
-  wrapper = (pkt_readerObject*) pkt_readerType.tp_new(&pkt_readerType, NULL, NULL);
-  wrapper->handle = handle;
+  pkt_readerObject* reader;
+  reader = (pkt_readerObject*) pkt_readerType.tp_new(&pkt_readerType, NULL, NULL);
+  reader->handle = handle;
 
-  if (! wrapper)
+  // Interface MAC add
+  if((rv = get_interface_mac_address(devname, reader->iface_mac)) == -1) {
+    fprintf(stderr, "Could not get interface %s MAC address [%d]\n", devname, rv);
+    return NULL;
+  }
+
+  // Gateway information
+  if((rv = get_gateway_info(&reader->gateway_ip, reader->gateway_mac)) != 0) {
+    fprintf(stderr, "Could not get gateway information [%d]\n", rv);
+    return NULL;
+  }
+
+  if (! reader)
     return NULL;
 
-  return (PyObject *)wrapper;
+  return (PyObject *)reader;
 }
 
-static PyObject *close_capture_dev(PyObject *self, PyObject *args) {
-  pkt_readerObject *wrapper;
+/* ************************************************************ */
 
-  if (!PyArg_ParseTuple(args, "O", &wrapper))
+static PyObject *close_capture_dev(PyObject *self, PyObject *args) {
+  pkt_readerObject *reader;
+
+  if (!PyArg_ParseTuple(args, "O", &reader))
     return NULL;
 
-  _close_capture_dev(wrapper->handle);
-  Py_DECREF(wrapper);
+  _close_capture_dev(reader->handle);
+  Py_DECREF(reader);
 
   return Py_BuildValue("s", NULL);
 }
 
+/* ************************************************************ */
+
 static PyObject *read_packet_info(PyObject *self, PyObject *args) {
   PyObject *dict;
-  pkt_readerObject *wrapper;
-  char mac_buf[MAC_BUF_SIZE];
-  char ip_buf[IP_BUF_SIZE];
-  char name_buf[NAME_BUF_SIZE];
-  char dns_buf[DNS_QUERY_SIZE];
+  pkt_readerObject *reader;
+  PacketInfo pinfo;
 
-  if (!PyArg_ParseTuple(args, "O", &wrapper))
+  if (!PyArg_ParseTuple(args, "O", &reader))
     return NULL;
 
-  mac_buf[0] = ip_buf[0] = name_buf[0] = dns_buf[0] = '\0';
-  if (! _read_packet_info(wrapper->handle, mac_buf, ip_buf, name_buf, dns_buf))
+  memset(&pinfo, 0, sizeof(pinfo));
+
+  if (! _read_packet_info(reader->handle, &pinfo))
     return Py_BuildValue("s", NULL);
 
   dict = PyDict_New();
   if (! dict)
     return NULL;
 
-  if (mac_buf[0]) PyDict_SetItemString(dict, "mac", PyUnicode_FromString(mac_buf));
-  if (ip_buf[0]) PyDict_SetItemString(dict, "ip", PyUnicode_FromString(ip_buf));
-  if (name_buf[0]) PyDict_SetItemString(dict, "name", PyUnicode_FromString(name_buf));
-  if (dns_buf[0]) PyDict_SetItemString(dict, "query", PyUnicode_FromString(dns_buf));
+  if (pinfo.mac_buf[0]) PyDict_SetItemString(dict, "mac", PyUnicode_FromString(pinfo.mac_buf));
+  if (pinfo.ip_buf[0]) PyDict_SetItemString(dict, "ip", PyUnicode_FromString(pinfo.ip_buf));
+  if (pinfo.name_buf[0]) PyDict_SetItemString(dict, "name", PyUnicode_FromString(pinfo.name_buf));
+  if (pinfo.dns_buf[0]) PyDict_SetItemString(dict, "query", PyUnicode_FromString(pinfo.dns_buf));
+  if (pinfo.proto[0]) PyDict_SetItemString(dict, "proto", PyUnicode_FromString(pinfo.proto));
 
   return dict;
 }
+
+/* ************************************************************ */
+
+static PyObject *arp_spoof(PyObject *self, PyObject *args, int arp_op) {
+  pkt_readerObject *reader;
+  const char *target_mac_str, *target_ip_str;
+  uint32_t target_ip;
+  u_char target_mac[6];
+
+  if (!PyArg_ParseTuple(args, "Oss", &reader, &target_mac_str, &target_ip_str))
+    return NULL;
+
+  target_ip = inet_addr(target_ip_str);
+
+  if(target_ip == INADDR_NONE)
+    return NULL;
+
+  if(!parse_mac(target_mac_str, target_mac))
+    return NULL;
+
+//~ #ifdef DEBUG
+  printf("Spoofing %s (%s) [%s]\n", target_mac_str, target_ip_str, (arp_op == ARP_REQUEST) ? "ARP_REQ" : "ARP_REP");
+//~ #endif
+
+  if(_send_spoofed_arp(reader, target_ip, target_mac, arp_op) == 0)
+    Py_RETURN_TRUE;
+
+  Py_RETURN_FALSE;
+}
+
+static inline PyObject *arp_req_spoof(PyObject *self, PyObject *args) { return(arp_spoof(self, args, ARP_REQUEST)); }
+static inline PyObject *arp_rep_spoof(PyObject *self, PyObject *args) { return(arp_spoof(self, args, ARP_REPLY)); }
+
+/* ************************************************************ */
+
+static PyObject *get_iface_mac(PyObject *self, PyObject *args) {
+  pkt_readerObject *reader;
+  char mac[18];
+
+  if(!PyArg_ParseTuple(args, "O", &reader))
+    return NULL;
+
+  format_mac(reader->iface_mac, mac, sizeof(mac));
+
+  return PyUnicode_FromString(mac);
+}
+
+/* ************************************************************ */
+
+static PyObject *get_gateway_mac(PyObject *self, PyObject *args) {
+  pkt_readerObject *reader;
+  char mac[18];
+
+  if(!PyArg_ParseTuple(args, "O", &reader))
+    return NULL;
+
+  format_mac(reader->gateway_mac, mac, sizeof(mac));
+
+  return PyUnicode_FromString(mac);
+}
+
+/* ************************************************************ */
+
+static PyObject *get_gateway_ip(PyObject *self, PyObject *args) {
+  pkt_readerObject *reader;
+  struct in_addr addr;
+
+  if(!PyArg_ParseTuple(args, "O", &reader))
+    return NULL;
+
+  addr.s_addr = reader->gateway_ip;
+
+  return PyUnicode_FromString(inet_ntoa(addr));
+}
+
+/* ************************************************************ */
 
 static PyMethodDef PktReaderMethods[] = {
   {"open_capture_dev",  open_capture_dev, METH_VARARGS, "Open a device for capture."},
   {"close_capture_dev", close_capture_dev, METH_VARARGS, "Closes a devices capture."},
   {"read_packet_info", read_packet_info, METH_VARARGS, "Read packet information. None is returned if no packet information is available."},
+  {"arp_req_spoof", arp_req_spoof, METH_VARARGS, "Send a spoofed ARP request"},
+  {"arp_rep_spoof", arp_rep_spoof, METH_VARARGS, "Send a spoofed ARP reply"},
+  {"get_iface_mac", get_iface_mac, METH_VARARGS, "Get the interface MAC address"},
+  {"get_gateway_mac", get_gateway_mac, METH_VARARGS, "Get the gateway MAC address"},
+  {"get_gateway_ip", get_gateway_ip, METH_VARARGS, "Get the gateway IP address"},
   {NULL, NULL, 0, NULL}  /* Sentinel */
 };
-
 
 PyMODINIT_FUNC PyInit_pkt_reader() {
   if (PyType_Ready(&pkt_readerType) < 0)
@@ -389,10 +613,7 @@ PyMODINIT_FUNC PyInit_pkt_reader() {
 
 int main(int argc, char *argv[]) {
   const char *devname = "wlan0";
-  char mac_buf[MAC_BUF_SIZE];
-  char ip_buf[IP_BUF_SIZE];
-  char name_buf[NAME_BUF_SIZE];
-  char dns_buf[DNS_QUERY_SIZE];
+  PacketInfo pinfo;
 
   pcap_t *dev = _open_capture_dev(devname, 1000, "broadcast or arp", 0);
 
@@ -400,11 +621,10 @@ int main(int argc, char *argv[]) {
     printf("Capturing packets on %s...\n", devname);
 
     while(1) {
-      mac_buf[0] = '\0';
-      name_buf[0] = '\0';
+      memset(&pinfo, 0, sizeof(pinfo));
 
-      if (_read_packet_info(dev, mac_buf, ip_buf, name_buf, dns_buf)) {
-        printf("+ Seen %s as %s [name=%s][dns=%s]\n", mac_buf, ip_buf, name_buf, dns_buf);
+      if (_read_packet_info(dev, &pinfo)) {
+        printf("+ Seen %s as %s [name=%s][dns=%s]\n", pinfo->mac_buf, pinfo->ip_buf, pinfo->name_buf, pinfo->dns_buf);
       }
     }
 

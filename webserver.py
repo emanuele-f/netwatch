@@ -30,7 +30,6 @@ import threading
 import multiprocessing
 
 # web.config.debug = False
-TEMPLATES = 'html/'
 WEB_PORT = 8000
 
 def resToMinTime(res):
@@ -51,14 +50,14 @@ class WebServerJob(Job):
     super(WebServerJob, self).__init__("web_server", self.run, force_kill=True)
 
     self.app = Flask("Netwatch",
-      template_folder = TEMPLATES,
+      template_folder = './html',
       static_url_path = "/static")
 
     self.app.route('/', methods=['GET'])(self.GET_Timeline)
+    self.app.route('/static/<path:path>', methods=['GET'])(self.GET_Static)
     self.app.route('/devices', methods=['GET'])(self.GET_Devices)
     self.app.route('/devices', methods=['POST'])(self.POST_Devices)
     self.app.route('/data/devices.json', methods=['GET'])(self.GET_Devices_JSON)
-    self.app.route('/<path:path>', methods=['GET'])(self.GET_Static)
     self.app.route('/people', methods=['GET'])(self.GET_People)
     self.app.route('/people', methods=['POST'])(self.POST_People)
     self.app.route('/data/users.json', methods=['GET'])(self.GET_People_JSON)

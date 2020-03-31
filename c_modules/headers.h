@@ -45,6 +45,12 @@ struct arphdr {
   u_char tpa[4];      /* Target IP address       */ 
 } __attribute__((packed));
 
+struct arppkt {
+  u_char dst_mac[6], src_mac[6];
+  u_int16_t proto;
+  struct arphdr arph;
+} __attribute__ ((packed));
+
 struct udphdr {
   u_int16_t sport;
   u_int16_t dport;
