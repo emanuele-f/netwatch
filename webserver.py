@@ -135,6 +135,7 @@ class WebServerJob(Job):
       return jsonify(getDevicesData(meta_db))
     else:
       self.web_msgqueue[0].send("get_active_devices")
+      known_macs = config.getConfiguredDevices().keys()
 
       # Avoid infinite wait
       has_message = self.web_msgqueue[0].poll(10)
@@ -146,13 +147,14 @@ class WebServerJob(Job):
       rv = []
 
       for mac, hostinfo in active_devices.items():
-        rv.append({
-          "mac": mac,
-          "name": hostinfo.name,
-          "ip": hostinfo.ip,
-          "first_seen": int(hostinfo.first_seen),
-          "last_seen": int(hostinfo.last_seen),
-        })
+        if not mac in known_macs:
+          rv.append({
+            "mac": mac,
+            "name": hostinfo.name,
+            "ip": hostinfo.ip,
+            "first_seen": int(hostinfo.first_seen),
+            "last_seen": int(hostinfo.last_seen),
+          })
 
       return jsonify(rv)
 
