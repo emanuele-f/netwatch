@@ -5,6 +5,18 @@
 {% set show_active_probe = "true" if not config.getPeriodicDiscoveryEnabled() else "false" %}
 {% set active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else "" %}
 {% set users = config.getConfiguredUsers() %}
+{% set add_edit_action = "Edit Device" if mode != "unknown" else "Add Device" %}
+
+{% block navcontent %}
+<ul class="nav nav-pills">
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if (mode == 'home') else '' }}" href="?mode=home">Home Devices</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if (mode == 'unknown') else '' }}" href="?mode=unknown">Unknown Devices</a>
+  </li>
+</ul>
+{% endblock %}
 
 {% block content %}
 <div class="modal fade" id="addDeviceDialog" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -55,14 +67,14 @@
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="editDeviceLabel">Edit Device <span id="macToEditPlaceholder"></span></h5>
+        <h5 class="modal-title" id="editDeviceLabel">{{ add_edit_action }} <span id="macToEditPlaceholder"></span></h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
       <form method="post">
         <div class="modal-body">
-          <input type="hidden" name="action" value="edit" />
+          <input type="hidden" name="action" value="{{ 'edit' if mode != 'unknown' else 'add' }}" />
           <input type="hidden" id="macToEdit" name="mac" />
           <div class="form-group">
             <label for="customName">Custom name</label>
@@ -95,7 +107,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Edit Device</button>
+          <button type="submit" class="btn btn-primary">{{ add_edit_action }}</button>
         </div>
       </form>
     </div>
@@ -128,9 +140,11 @@
 </div>
 
 <div class="container">
+{% if mode != "unknown" %}
   <div id="toolbar">
      <button class="btn btn-secondary" data-toggle="modal" data-target="#addDeviceDialog">Add Device</button>
   </div>
+{% endif %}
 
   <table id="devices-table"></table>
 </div>
@@ -151,23 +165,29 @@
   }
 
   $('#devices-table').netwatchTable({
-    url: 'data/devices.json',
+    url: 'data/devices.json?mode={{ mode }}',
     columns: [{
       field: 'mac',
       title: 'Mac Address',
       sortable: true,
     }, {
       field: 'name',
+{% if mode != "unknown" %}
       title: 'Custom Name',
+{% else %}
+      title: 'Name',
+{% endif %}
       sortable: true,
-    }, {
+    },
+{% if mode != "unknown" %}
+    {
       title: 'User',
       field: 'user',
       sortable: true,
       formatter: function(value, row, index) {
         return (row.trigger_activity ? '<i class="fa fa-heartbeat fa-sm" title="Trigger User Activity"></i> ' : '') + row.user;
       }
-    }, {
+    },{
       field: 'active',
       title: 'Status',
       class: 'text-center',
@@ -175,7 +195,19 @@
         return value=="true" ? `<span class="badge badge-success">Online</span>` : `<span class="badge badge-default">Offline</span>`;
       },
       sortable: true,
-    }, {
+    },
+{% else %}
+    {
+      field: 'last_seen',
+      title: 'Last Seen',
+      class: 'text-center',
+      formatter: function(value, row, index) {
+        return moment(value * 1000).fromNow();
+      },
+      sortable: true,
+    },
+{% endif %}
+    {
       field: 'ip',
       title: 'Ip Address',
     }, {
@@ -187,7 +219,9 @@
         return value ? `<i class="fa fa-toggle-on"></i>` : `<i class="fa fa-toggle-off"></i>`;
       },
       sortable: true,
-  }], actions: [{
+  }], actions: [
+{% if mode != "unknown" %}
+  {
     modal: "#editDeviceDialog",
     button: "btn-primary",
     icon: "fa-pencil",
@@ -197,7 +231,16 @@
     button: "btn-danger",
     icon: "fa-trash",
     click: populateDeleteDialog,
-  }],
+  }
+{% else %}
+  {
+    modal: "#editDeviceDialog",
+    button: "btn-primary",
+    icon: "fa-plus",
+    click: populateEditDialog,
+  }
+{% endif %}
+],
  });
 </script>
 {% endblock %}

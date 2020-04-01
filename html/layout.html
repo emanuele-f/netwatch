@@ -78,7 +78,14 @@
         <!-- Main Content -->
         <div id="mainContent" class="col-md-10 col-xs-11">
           <nav id="netwatchNavbarTop" class="navbar navbar-toggleable-md navbar-inverse bg-inverse">
-            <span class="navbar-brand" href="#">{{ page }}</span>
+            {% block navcontent %}{% endblock %}
+            {% if page != "Devices" %}
+            <ul class="nav nav-pills">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">{{ page }}</a>
+                </li>
+            </ul>
+            {% endif %}
           </nav>
           <div id="pageContent">
             {% block content %}{% endblock %}

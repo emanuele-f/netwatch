@@ -25,8 +25,10 @@ import time, datetime
 import errno
 import subprocess
 import re
+import pickle
 import config
 from queue import Empty as QueueEmpty
+from multiprocessing import Pipe
 
 TIME_SLOT = 60
 REMAINING_BEFORE_POKE = 20
@@ -43,6 +45,7 @@ log = None
 presence_db = None
 meta_db = None
 scanner_msgqueue = None
+web_msgqueue = None
 
 # Host which where active during the last time slot
 prev_hosts = {}
@@ -161,6 +164,10 @@ def guessMainInterface():
 
   return ""
 
+def getActiveDevices(conn):
+  to_dump = prev_hosts if prev_hosts else next_hosts
+  conn.send(pickle.dumps(to_dump))
+
 def mainLoop():
   global running
   global prev_hosts
@@ -217,9 +224,16 @@ def mainLoop():
     now = int(time.time())
 
     if now < next_slot:
-      # TODO use blocking queue wait instead
       seconds = min(next_slot, now + MESSAGE_CHECK_INTERVAL) - now
-      time.sleep(seconds)
+
+      # Sleep
+      has_msg = web_msgqueue[1].poll(timeout=seconds)
+
+      if has_msg:
+        msg = web_msgqueue[1].recv()
+
+        if msg == "get_active_devices":
+          getActiveDevices(web_msgqueue[1])
 
 def dropPrivileges(drop_user, drop_group):
   if os.getuid() != 0:
@@ -276,6 +290,7 @@ if __name__ == "__main__":
   from arp_scanner import ARPScannerJob
   from presence_db import PresenceDB
   from webserver import WebServerJob
+  from captive_portal import CaptivePortalJob
   from meta_db import MetaDB
 
   log.debug("Initializing database...")
@@ -298,7 +313,11 @@ if __name__ == "__main__":
     log.info("Ignoring ARP scanner in passive mode")
 
   log.debug("Starting web server...")
-  manager.runJob(WebServerJob())
+  web_msgqueue = Pipe()
+  manager.runJob(WebServerJob(), (web_msgqueue,))
+
+  log.debug("Starting captive portal...")
+  manager.runJob(CaptivePortalJob())
 
   log.info("Running main loop...")
   initSignals()

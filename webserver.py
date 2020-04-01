@@ -26,6 +26,7 @@ import waitress
 import time
 import config
 import json
+import pickle
 import threading
 import multiprocessing
 
@@ -49,6 +50,7 @@ class WebServerJob(Job):
     # without luck. For now just kill the server brutally.
     super(WebServerJob, self).__init__("web_server", self.run, force_kill=True)
 
+    self.web_msgqueue = None
     self.app = Flask("Netwatch",
       template_folder = './html',
       static_url_path = "/static")
@@ -64,6 +66,14 @@ class WebServerJob(Job):
     self.app.route('/settings', methods=['GET'])(self.GET_Settings)
     self.app.route('/settings', methods=['POST'])(self.POST_Settings)
     self.app.route('/about', methods=['GET'])(self.GET_About)
+
+  def request_get_mode(self):
+    mode = request.args.get('mode', "home")
+
+    if not mode in ["home", "unknown"]:
+      mode = "home"
+
+    return(mode)
 
   def GET_Static(self, path):
     return send_from_directory('js', path)
@@ -113,11 +123,38 @@ class WebServerJob(Job):
       timestamp=ts_start, timestamp_end=ts_end, resolution=resolution, chart_min_time=min_time)
 
   def GET_Devices(self):
-    return render_template('devices.html', config=config)
+    mode = self.request_get_mode()
+    return render_template('devices.html', config=config, mode=mode)
 
   def GET_Devices_JSON(self):
-    meta_db = MetaDB()
-    return jsonify(getDevicesData(meta_db))
+    mode = self.request_get_mode()
+
+    if mode == "home":
+      # Configured devices
+      meta_db = MetaDB()
+      return jsonify(getDevicesData(meta_db))
+    else:
+      self.web_msgqueue[0].send("get_active_devices")
+
+      # Avoid infinite wait
+      has_message = self.web_msgqueue[0].poll(10)
+
+      if not has_message:
+        return jsonify([])
+
+      active_devices = pickle.loads(self.web_msgqueue[0].recv())
+      rv = []
+
+      for mac, hostinfo in active_devices.items():
+        rv.append({
+          "mac": mac,
+          "name": hostinfo.name,
+          "ip": hostinfo.ip,
+          "first_seen": int(hostinfo.first_seen),
+          "last_seen": int(hostinfo.last_seen),
+        })
+
+      return jsonify(rv)
 
   def POST_Devices(self):
     action = request.form.get('action')
@@ -128,9 +165,9 @@ class WebServerJob(Job):
     if (action == "add") or (action == "edit"):
       if action == "edit":
         overwrite = True
-        user = request.form.get('user')
 
       custom_name = request.form.get('custom_name')
+      user = request.form.get('user', None)
       active_ping = False
       trigger_activity = False
 
@@ -181,7 +218,8 @@ class WebServerJob(Job):
 
     return redirect(url_for('GET_Settings'), code=303)
 
-  def run(self, *args):
+  def run(self, _, web_msgqueue):
+    self.web_msgqueue = web_msgqueue
     waitress.serve(self.app, port=WEB_PORT, threads=8)
 
 if __name__ == "__main__":

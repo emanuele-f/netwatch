@@ -207,3 +207,12 @@ a, a:hover, a:focus {
   width: 40px;
   margin-right: 5px;
 }
+
+/* Custom theme fixes */
+.bg-inverse .nav-link:not(.active) {
+  color: #C4C4C4;
+}
+
+/*.bg-inverse .nav-link.active {
+  background-color: #26A59A;
+}*/

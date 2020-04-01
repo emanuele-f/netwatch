@@ -76,12 +76,12 @@ class PacketsReaderJob(Job):
 
     while self.isRunning():
       info = pkt_reader.read_packet_info(handle)
+      now = time.time()
 
       if info:
         name = info.get("name")
         mac = info["mac"]
         ip = info["ip"]
-        now = time.time()
 
         self.handleHost(mac, ip, name, now)
 

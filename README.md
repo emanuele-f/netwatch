@@ -63,6 +63,3 @@ Netwatch is under the GPL 3 license.
 - Add no data view
 - People timeline
 - Handle login
-
-## TODO 0.2
-- Unknown devices filter
