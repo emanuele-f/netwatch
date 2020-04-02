@@ -165,7 +165,7 @@ def guessMainInterface():
   return ""
 
 def getActiveDevices(conn):
-  to_dump = prev_hosts if prev_hosts else next_hosts
+  to_dump = {**prev_hosts, **next_hosts}
   conn.send(pickle.dumps(to_dump))
 
 def mainLoop():
