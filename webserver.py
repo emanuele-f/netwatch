@@ -54,16 +54,19 @@ def resToMinTime(res):
   else:
     return 10
 
-with open('creds.txt', 'r') as f:
-  creds = f.readline().strip().split(":")
+try:
+  with open('creds.txt', 'r') as f:
+    creds = f.readline().strip().split(":")
 
-  if(len(creds) == 2):
-    auth_username = creds[0]
-    auth_password = generate_password_hash(creds[1])
+    if(len(creds) == 2):
+      auth_username = creds[0]
+      auth_password = generate_password_hash(creds[1])
 
-    print("Webserver HTTPAuth enabled")
-  else:
-    print("Invalid credentials, webserver HTTPAuth is NOT enabled!")
+      print("Webserver HTTPAuth enabled")
+    else:
+      print("Invalid credentials, webserver HTTPAuth is NOT enabled!")
+except FileNotFoundError:
+  pass
 
 class WebServerJob(Job):
   def __init__(self):
