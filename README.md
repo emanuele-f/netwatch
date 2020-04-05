@@ -22,6 +22,7 @@ In order to run Netwatch, you will need to satisfy the following dependencies:
 
 - python3
 - python-flask
+- python-flask-httpauth
 - python-waitress
 - python-pysqlite
 - python-prctl
@@ -56,6 +57,11 @@ Netwatch gui.
 System wide installation is not curretly supported. You can modify the sample service file `packages/netwatch.service`
 to run the program at startup.
 
+## Authentication
+
+netwatch supports the Basic HTTP Authentication. Credentials will be sent in plaintext! In order to enabled it,
+create a `creds.txt` file in the netwatch directory with a single line `username:password`
+
 ## Licence
 
 Netwatch is under the GPL 3 license.
@@ -63,4 +69,3 @@ Netwatch is under the GPL 3 license.
 ## TODO 0.1
 - Add no data view
 - People timeline
-- Handle login

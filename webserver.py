@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 from flask import Flask, request, redirect, url_for, jsonify, render_template, send_from_directory
+from flask_httpauth import HTTPBasicAuth
+from werkzeug.security import generate_password_hash, check_password_hash
 from presence_db import PresenceDB
 from meta_db import MetaDB
 from utils.jobs import Job
@@ -32,6 +34,15 @@ import multiprocessing
 
 # web.config.debug = False
 WEB_PORT = 8000
+auth = HTTPBasicAuth()
+auth_username = None
+auth_password = None
+
+def check_auth(func):
+  if not auth_username or not auth_password:
+    return func
+
+  return auth.login_required(func)
 
 def resToMinTime(res):
   if res == "1M":
@@ -42,6 +53,17 @@ def resToMinTime(res):
     return 240
   else:
     return 10
+
+with open('creds.txt', 'r') as f:
+  creds = f.readline().strip().split(":")
+
+  if(len(creds) == 2):
+    auth_username = creds[0]
+    auth_password = generate_password_hash(creds[1])
+
+    print("Webserver HTTPAuth enabled")
+  else:
+    print("Invalid credentials, webserver HTTPAuth is NOT enabled!")
 
 class WebServerJob(Job):
   def __init__(self):
@@ -67,6 +89,16 @@ class WebServerJob(Job):
     self.app.route('/settings', methods=['POST'])(self.POST_Settings)
     self.app.route('/about', methods=['GET'])(self.GET_About)
 
+  @auth.verify_password
+  def verify_password(username, password):
+    # https://flask-httpauth.readthedocs.io/en/latest/
+    # NOTE: logout is not possible with HTTP auth
+
+    if(username != auth_username):
+      return False
+
+    return check_password_hash(auth_password, password)
+
   def request_get_mode(self):
     mode = request.args.get('mode', "home")
 
@@ -75,9 +107,11 @@ class WebServerJob(Job):
 
     return(mode)
 
+  @check_auth
   def GET_Static(self, path):
     return send_from_directory('js', path)
 
+  @check_auth
   def GET_Timeline(self):
     # TODO handle now
     timestamp = request.args.get('username', "now")
@@ -122,10 +156,12 @@ class WebServerJob(Job):
     return render_template('timeline.html', intervals_data=json.dumps(data, ensure_ascii=True),
       timestamp=ts_start, timestamp_end=ts_end, resolution=resolution, chart_min_time=min_time)
 
+  @check_auth
   def GET_Devices(self):
     mode = self.request_get_mode()
     return render_template('devices.html', config=config, mode=mode)
 
+  @check_auth
   def GET_Devices_JSON(self):
     mode = self.request_get_mode()
 
@@ -158,6 +194,7 @@ class WebServerJob(Job):
 
       return jsonify(rv)
 
+  @check_auth
   def POST_Devices(self):
     action = request.form.get('action')
     mac = request.form.get('mac')
@@ -186,13 +223,16 @@ class WebServerJob(Job):
 
     return redirect(url_for('GET_Devices'), code=303)
 
+  @check_auth
   def GET_People(self):
     return render_template('people.html')
 
+  @check_auth
   def GET_People_JSON(self):
     meta_db = MetaDB()
     return jsonify(getUsersData(meta_db))
 
+  @check_auth
   def POST_People(self):
     action = request.form.get('action')
     username = request.form.get('username')
@@ -212,12 +252,15 @@ class WebServerJob(Job):
 
     return redirect(url_for('GET_People'), code=303)
 
+  @check_auth
   def GET_About(self):
     return render_template('about.html')
 
+  @check_auth
   def GET_Settings(self):
     return render_template('settings.html', config=config)
 
+  @check_auth
   def POST_Settings(self):
     periodic_discovery = request.form.get('periodic_discovery') and True or False
     captive_portal = request.form.get('captive_portal') and True or False
