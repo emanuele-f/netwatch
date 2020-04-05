@@ -192,10 +192,13 @@ def getCaptivePortalEnabled():
   return data[GLOBAL_CONFG_SECTION].get("captive_portal", False)
 
 def getDeviceProbeEnabled(mac):
-  try:
-    return data[DEVICES_CONFIG_SECTION][mac]["active_ping"]
-  except KeyError:
-    return False
+  # TODO remove active probe pref?
+  return True
+
+  #try:
+  #  return data[DEVICES_CONFIG_SECTION][mac]["active_ping"]
+  #except KeyError:
+    #return False
 
 def reload():
   _loadData(True)

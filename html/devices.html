@@ -3,7 +3,11 @@
 {% set page = "Devices" %}
 
 {% set show_active_probe = "true" if not config.getPeriodicDiscoveryEnabled() else "false" %}
+{% set show_active_probe = "false" %}
+
 {% set active_probe_hidden = "hidden" if config.getPeriodicDiscoveryEnabled() else "" %}
+{% set active_probe_hidden = "hidden" %}
+
 {% set users = config.getConfiguredUsers() %}
 {% set add_edit_action = "Edit Device" if mode != "unknown" else "Add Device" %}
 
@@ -165,7 +169,7 @@
     $('#macToEdit_user').val(row.user == "Others" ? "" : row.user);
     $('#macToEdit_ping').prop('checked', row.active_ping);
     $('#macToEdit_activity').prop('checked', row.trigger_activity);
-    $('#macToEdit_policy').val(row.policy);
+    $('#macToEdit_policy').val(row.policy || "default");
   }
 
   function populateDeleteDialog(row) {

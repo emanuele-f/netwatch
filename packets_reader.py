@@ -87,8 +87,9 @@ class PacketsReaderJob(Job):
     # does not know MAC addresses
     nft.run("add set ip nat cp_auth_ok { type ipv4_addr;}")
     nft.run("add set ip nat cp_whitelisted { type ether_addr;}")
+    nft.run("add set ip nat cp_blacklisted { type ether_addr;}")
     nft.run("add chain nat prerouting { type nat hook prerouting priority -100; }")
-    nft.run("add rule nat prerouting iif %s tcp dport { 80 } ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted counter dnat %s:%d" % (
+    nft.run("add rule nat prerouting iif %s tcp dport { 80 } ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted ether saddr != @cp_blacklisted counter dnat %s:%d" % (
       self.options["interface"], self.iface_ip, captive_port))
 
     # Masquerade outgoing traffic
@@ -117,6 +118,8 @@ class PacketsReaderJob(Job):
 
     nft.run("flush set ip filter cp_whitelisted")
     nft.run("flush set ip filter cp_blacklisted")
+    nft.run("flush set ip nat cp_whitelisted")
+    nft.run("flush set ip nat cp_blacklisted")
 
     for mac, mac_info in devices.items():
       policy = mac_info.get("policy", "default")
@@ -128,6 +131,7 @@ class PacketsReaderJob(Job):
         nft.run("add element ip filter cp_whitelisted { %s }" % (mac,))
         rearp_mac = True
       elif policy == "block":
+        nft.run("add element ip nat cp_blacklisted { %s }" % (mac,))
         nft.run("add element ip filter cp_blacklisted { %s }" % (mac,))
         spoof_mac = True
       elif policy == "default":
