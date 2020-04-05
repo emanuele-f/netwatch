@@ -25,7 +25,8 @@ In order to run Netwatch, you will need to satisfy the following dependencies:
 - python-waitress
 - python-pysqlite
 - python-prctl
-- libdnet
+- libdnet-dev
+- libnftables-dev
 - python3-dev (for C modules compilation)
 
 ## Build

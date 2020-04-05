@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Login</title>
+    <link rel="stylesheet" href="static/bootstrap.min.css">
+    <link rel="stylesheet" href="static/tether.min.css">
+    <link rel="stylesheet" href="static/font-awesome-4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="static/login.css">
+
+    <script src="static/jquery-3.2.1.min.js"></script>
+    <script src="static/popper.min.js"></script>
+    <script src="static/tether.min.js"></script>
+    <script src="static/bootstrap.min.js"></script>
+    <script src="static/moment.min.js"></script>
+  </head>
+  <body>
+    <div class="login-form">
+      <form action="/login_ok?url={{ url }}" method="post">
+        <h2 class="text-center">Log in</h2>
+        <div class="form-group">
+            <input type="text" name="username" class="form-control" placeholder="Username" required="required">
+        </div>
+        <div class="form-group">
+            <input type="password" name="password" class="form-control" placeholder="Password" required="required">
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary btn-block">Log in</button>
+        </div>
+      </form>
+    </div>
+  </body>
+</html>

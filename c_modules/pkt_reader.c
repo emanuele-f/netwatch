@@ -53,6 +53,7 @@ typedef struct {
   pcap_t *handle;
   u_char iface_mac[6];
   u_char gateway_mac[6];
+  uint32_t iface_ip;
   uint32_t gateway_ip;
 } pkt_readerObject;
 
@@ -300,13 +301,14 @@ static int _read_packet_info(pcap_t *handle, PacketInfo *pinfo) {
 /* ************************************************************ */
 
 static int _send_spoofed_arp(pkt_readerObject *reader,
-        u_int32_t target_ip, u_char *target_mac, int op_type) {
+        u_int32_t target_ip, u_char *target_mac, int op_type, int poison) {
   struct arppkt arp;
+  u_char *source_mac = poison ? reader->iface_mac : reader->gateway_mac;
 
   /* Ethernet */
   arp.proto = htons(0x0806);
   memcpy(arp.dst_mac, target_mac, sizeof(arp.dst_mac));
-  memcpy(arp.src_mac, &reader->iface_mac, sizeof(arp.src_mac));
+  memcpy(arp.src_mac, source_mac, sizeof(arp.src_mac));
 
   /* ARP */
   arp.arph.htype = htons(1);
@@ -317,7 +319,7 @@ static int _send_spoofed_arp(pkt_readerObject *reader,
   *((u_int32_t *)&arp.arph.spa) = reader->gateway_ip;
   *((u_int32_t *)&arp.arph.tpa) = target_ip;
   memcpy(arp.arph.tha, target_mac, sizeof(arp.dst_mac));
-  memcpy(arp.arph.sha, &reader->iface_mac, sizeof(arp.src_mac));
+  memcpy(arp.arph.sha, source_mac, sizeof(arp.src_mac));
 
   return pcap_sendpacket(reader->handle, (u_char*)&arp, sizeof(arp));
 }
@@ -407,6 +409,25 @@ static int get_gateway_info(uint32_t *gateway_ip, u_char *gateway_mac) {
 
 /* ************************************************************ */
 
+static int get_interface_ip_address(const char *iface, uint32_t *ip) {
+  struct ifreq ifr;
+  int fd;
+  int rv;
+
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+  ifr.ifr_addr.sa_family = AF_INET;
+  strncpy((char *)ifr.ifr_name, iface, IFNAMSIZ-1);
+
+  if((rv = ioctl(fd, SIOCGIFADDR, &ifr)) != -1)
+    *ip = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+
+  close(fd);
+  return(rv);
+}
+
+/* ************************************************************ */
+
 static int get_interface_mac_address(const char *iface, u_char *mac) {
   struct ifreq ifr;
   int fd;
@@ -445,7 +466,13 @@ static PyObject *open_capture_dev(PyObject *self, PyObject *args) {
   reader = (pkt_readerObject*) pkt_readerType.tp_new(&pkt_readerType, NULL, NULL);
   reader->handle = handle;
 
-  // Interface MAC add
+  // Interface IP
+  if((rv = get_interface_ip_address(devname, &reader->iface_ip)) == -1) {
+    fprintf(stderr, "Could not get interface %s IP address [%d]\n", devname, rv);
+    return NULL;
+  }
+
+  // Interface MAC
   if((rv = get_interface_mac_address(devname, reader->iface_mac)) == -1) {
     fprintf(stderr, "Could not get interface %s MAC address [%d]\n", devname, rv);
     return NULL;
@@ -472,6 +499,7 @@ static PyObject *close_capture_dev(PyObject *self, PyObject *args) {
     return NULL;
 
   _close_capture_dev(reader->handle);
+
   Py_DECREF(reader);
 
   return Py_BuildValue("s", NULL);
@@ -507,7 +535,7 @@ static PyObject *read_packet_info(PyObject *self, PyObject *args) {
 
 /* ************************************************************ */
 
-static PyObject *arp_spoof(PyObject *self, PyObject *args, int arp_op) {
+static PyObject *arp_spoof(PyObject *self, PyObject *args, int arp_op, int poison) {
   pkt_readerObject *reader;
   const char *target_mac_str, *target_ip_str;
   uint32_t target_ip;
@@ -525,17 +553,33 @@ static PyObject *arp_spoof(PyObject *self, PyObject *args, int arp_op) {
     return NULL;
 
 //~ #ifdef DEBUG
-  printf("Spoofing %s (%s) [%s]\n", target_mac_str, target_ip_str, (arp_op == ARP_REQUEST) ? "ARP_REQ" : "ARP_REP");
+  printf("%s %s (%s) [%s]\n", poison ? "Spoofing" : "Rearping",
+    target_mac_str, target_ip_str, (arp_op == ARP_REQUEST) ? "ARP_REQ" : "ARP_REP");
 //~ #endif
 
-  if(_send_spoofed_arp(reader, target_ip, target_mac, arp_op) == 0)
+  if(_send_spoofed_arp(reader, target_ip, target_mac, arp_op, poison) == 0)
     Py_RETURN_TRUE;
 
   Py_RETURN_FALSE;
 }
 
-static inline PyObject *arp_req_spoof(PyObject *self, PyObject *args) { return(arp_spoof(self, args, ARP_REQUEST)); }
-static inline PyObject *arp_rep_spoof(PyObject *self, PyObject *args) { return(arp_spoof(self, args, ARP_REPLY)); }
+static inline PyObject *arp_req_spoof(PyObject *self, PyObject *args) { return(arp_spoof(self, args, ARP_REQUEST, 1)); }
+static inline PyObject *arp_rep_spoof(PyObject *self, PyObject *args) { return(arp_spoof(self, args, ARP_REPLY, 1)); }
+static inline PyObject *arp_rearp(PyObject *self, PyObject *args)     { return(arp_spoof(self, args, ARP_REQUEST, 0)); }
+
+/* ************************************************************ */
+
+static PyObject *get_iface_ip(PyObject *self, PyObject *args) {
+  pkt_readerObject *reader;
+  struct in_addr addr;
+
+  if(!PyArg_ParseTuple(args, "O", &reader))
+    return NULL;
+
+  addr.s_addr = reader->iface_ip;
+
+  return PyUnicode_FromString(inet_ntoa(addr));
+}
 
 /* ************************************************************ */
 
@@ -587,6 +631,8 @@ static PyMethodDef PktReaderMethods[] = {
   {"read_packet_info", read_packet_info, METH_VARARGS, "Read packet information. None is returned if no packet information is available."},
   {"arp_req_spoof", arp_req_spoof, METH_VARARGS, "Send a spoofed ARP request"},
   {"arp_rep_spoof", arp_rep_spoof, METH_VARARGS, "Send a spoofed ARP reply"},
+  {"arp_rearp", arp_rearp, METH_VARARGS, "Re-arp the device to the original gateway"},
+  {"get_iface_ip", get_iface_ip, METH_VARARGS, "Get the interface IP address"},
   {"get_iface_mac", get_iface_mac, METH_VARARGS, "Get the interface MAC address"},
   {"get_gateway_mac", get_gateway_mac, METH_VARARGS, "Get the gateway MAC address"},
   {"get_gateway_ip", get_gateway_ip, METH_VARARGS, "Get the gateway IP address"},

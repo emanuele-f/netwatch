@@ -164,10 +164,6 @@ def guessMainInterface():
 
   return ""
 
-def getActiveDevices(conn):
-  to_dump = {**prev_hosts, **next_hosts}
-  conn.send(pickle.dumps(to_dump))
-
 def mainLoop():
   global running
   global prev_hosts
@@ -233,7 +229,8 @@ def mainLoop():
         msg = web_msgqueue[1].recv()
 
         if msg == "get_active_devices":
-          getActiveDevices(web_msgqueue[1])
+          to_dump = {**prev_hosts, **next_hosts}
+          web_msgqueue[1].send(pickle.dumps(to_dump))
 
 def dropPrivileges(drop_user, drop_group):
   if os.getuid() != 0:
@@ -303,7 +300,8 @@ if __name__ == "__main__":
   })
 
   log.debug("Starting packets reader...")
-  manager.runJob(PacketsReaderJob())
+  cp_eventsqueue = Pipe()
+  manager.runJob(PacketsReaderJob(), (cp_eventsqueue,))
 
   if not args.passive:
     log.debug("Starting ARP scanner...")
@@ -317,7 +315,7 @@ if __name__ == "__main__":
   manager.runJob(WebServerJob(), (web_msgqueue,))
 
   log.debug("Starting captive portal...")
-  manager.runJob(CaptivePortalJob())
+  manager.runJob(CaptivePortalJob(), (cp_eventsqueue,))
 
   log.info("Running main loop...")
   initSignals()

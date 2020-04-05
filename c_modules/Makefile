@@ -1,6 +1,6 @@
 .phony: default clean
 
-default: pkt_reader.so arp_scanner.so
+default: pkt_reader.so arp_scanner.so nft.so
 clean:
 	rm -f *.o *.so arp_scanner pkt_reader
 	rm -rf __pycache__
@@ -22,3 +22,9 @@ arp_scanner.so: arp_scanner.o
 
 arp_scanner: arp_scanner.o
 	gcc -g arp_scanner.o -o arp_scanner -ldnet `pkg-config --libs python3`
+
+nft.o: nft.c
+	gcc -g -Wall -fPIC `pkg-config --cflags python3` -c nft.c -o nft.o
+
+nft.so: nft.o
+	gcc -shared nft.o -o nft.so -lnftables `pkg-config --libs python3`
