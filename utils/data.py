@@ -91,6 +91,9 @@ def getDevicePolicy(mac):
   if mac_info:
     policy = mac_info.get("policy", "default")
 
+    if not policy:
+      policy = "default"
+
     if policy != "default":
       return(policy)
 

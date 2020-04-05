@@ -54,7 +54,7 @@ class PacketsReaderJob(Job):
 
       policy = getDevicePolicy(mac)
 
-      if policy != "pass":
+      if(policy == "block") or (policy == "captive_portal"):
         print("Policy [MAC: %s] -> %s" % (mac, policy))
         return True
 

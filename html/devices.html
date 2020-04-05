@@ -43,6 +43,24 @@
             <label for="customName">Custom name</label>
             <input type="text" class="form-control" id="customName" name="custom_name" placeholder="A custom name for the device"/>
           </div>
+          <div class="form-group">
+            <label for="macToEdit_user">User</label>
+            <select id="macToEdit_user" name="user" class="form-control">
+              <option value="">Others</option>
+
+              {% for user in users %}
+                <option value="{{ user }}">{{ user }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="macToEdit_policy">Policy</label>
+            <select id="macToEdit_policy" name="policy" class="form-control">
+              <option value="default">Default</option>
+              <option value="pass">Pass</option>
+              <option value="block">Block</option>
+            </select>
+          </div>
           <div class="form-check">
             <label class="form-check-label">
               <input type="checkbox" class="form-check-input" name="trigger_activity" aria-describedby="userActivityHelp">
