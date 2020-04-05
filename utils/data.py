@@ -63,6 +63,7 @@ def getDevicesData(meta_db):
       "active_ping": value["active_ping"],
       "trigger_activity": value.get("trigger_activity", False),
       "active": device_active,
+      "policy": value.get("policy", "default"),
     })
   
   return res
@@ -82,3 +83,19 @@ def getUsersData(meta_db):
     })
 
   return res
+
+# Returns: captive_portal|pass|block
+def getDevicePolicy(mac):
+  mac_info = config.getDeviceInfo(mac)
+
+  if mac_info:
+    policy = mac_info.get("policy", "default")
+
+    if policy != "default":
+      return(policy)
+
+  # Default policy
+  if config.getCaptivePortalEnabled():
+    return "captive_portal"
+
+  return "pass"

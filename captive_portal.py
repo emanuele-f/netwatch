@@ -97,8 +97,8 @@ class CaptivePortalJob(Job):
       # Need to add the expection immediately, before redirecting the device
       # TODO: IP should be harvested when DHCP requests are seen, otherwill
       # the IP will be allowed forever
-      nft.run("add element ip nat cp_whitelisted { %s }" % (request.remote_addr,))
-      nft.run("add element ip filter cp_whitelisted { %s }" % (request.remote_addr,))
+      nft.run("add element ip nat cp_auth_ok { %s }" % (request.remote_addr,))
+      nft.run("add element ip filter cp_auth_ok { %s }" % (request.remote_addr,))
 
       return(self.GET_LoginOk())
     else:

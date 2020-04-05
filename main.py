@@ -28,7 +28,7 @@ import re
 import pickle
 import config
 from queue import Empty as QueueEmpty
-from multiprocessing import Pipe
+from multiprocessing import Pipe, Event
 
 TIME_SLOT = 60
 REMAINING_BEFORE_POKE = 20
@@ -301,7 +301,8 @@ if __name__ == "__main__":
 
   log.debug("Starting packets reader...")
   cp_eventsqueue = Pipe()
-  manager.runJob(PacketsReaderJob(), (cp_eventsqueue,))
+  config_changeev = Event()
+  manager.runJob(PacketsReaderJob(), (cp_eventsqueue, config_changeev, args.passive))
 
   if not args.passive:
     log.debug("Starting ARP scanner...")
@@ -312,10 +313,15 @@ if __name__ == "__main__":
 
   log.debug("Starting web server...")
   web_msgqueue = Pipe()
-  manager.runJob(WebServerJob(), (web_msgqueue,))
+  manager.runJob(WebServerJob(), (web_msgqueue, config_changeev))
 
-  log.debug("Starting captive portal...")
-  manager.runJob(CaptivePortalJob(), (cp_eventsqueue,))
+  if not args.passive:
+    # Note captive portal must be started even though getCaptivePortalEnabled()
+    # is False as the user can change it at runtime
+    log.debug("Starting captive portal...")
+    manager.runJob(CaptivePortalJob(), (cp_eventsqueue,))
+  else:
+    log.info("Ignoring Captive Portal in passive mode")
 
   log.info("Running main loop...")
   initSignals()

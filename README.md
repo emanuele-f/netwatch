@@ -1,6 +1,6 @@
 # Netwatch
 
-Netwatch - a tool to monitor the presence of the devices into a network.
+Netwatch - a tool to monitor and manage the presence of the devices into a network.
 
 ![alt text](https://raw.githubusercontent.com/emanuele-f/netwatch/master/screenshots/devices_page.png)
 
@@ -9,7 +9,7 @@ Here is a list of features Netwatch provides:
 - Timeline data visualization of a specific time frame
 - Group the devices into people to get a per-person presence timeline
 - Automatically determine device name from network traffic
-- Manually assign a name to a device mac address
+- Ability to block specific devices or to authenticate them via a Captive Portal
 
 In order to do its job, Netwatch uses a combination of passive and active scanning techniques.
 Active scanning is only used as fallback method to verify a device presence when

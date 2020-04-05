@@ -34,7 +34,7 @@ def getDeviceNetwork(device):
   if output:
     parts = output.split()
     if len(parts) >= 4:
-      return parts[3]
+      return parts[3].decode("ascii")
 
   # fallback
   return "192.168.1.1/24"
@@ -62,12 +62,12 @@ class ARPScannerJob(Job):
         if task == "net_scan":
           print("ARP scanning network " + net_range)
 
-          for i in xrange(NUM_SCAN_REPEATS):
+          for i in range(NUM_SCAN_REPEATS):
             arp_scanner.scan_network(handle, net_range)
         else:
           print("Scanning host " + task)
 
-          for i in xrange(NUM_SCAN_REPEATS):
+          for i in range(NUM_SCAN_REPEATS):
             arp_scanner.scan_ip(handle, task)
 
     arp_scanner.finish_scanner(handle)

@@ -93,7 +93,7 @@ def getDeviceUser(mac):
       return user
   return None
 
-def addDevice(mac, custom_name, ping_device, user, trigger_activity, overwrite=False):
+def addDevice(mac, custom_name, ping_device, user, trigger_activity, policy, overwrite=False):
   data = _loadData()
   mac = mac.upper()
 
@@ -111,6 +111,7 @@ def addDevice(mac, custom_name, ping_device, user, trigger_activity, overwrite=F
     "custom_name": custom_name,
     "active_ping": ping_device,
     "trigger_activity": trigger_activity,
+    "policy": policy,
   }
 
   if user:
@@ -176,14 +177,19 @@ def getConfiguredUsers():
   data = _loadData()
   return data[USERS_CONFIG_SECTION]
 
-def setPeriodicDiscoveryEnabled(enabled):
+def updateSettings(periodic_discovery, captive_portal):
   data = _loadData()
-  data[GLOBAL_CONFG_SECTION]["periodic_discovery"] = enabled
+  data[GLOBAL_CONFG_SECTION]["periodic_discovery"] = periodic_discovery
+  data[GLOBAL_CONFG_SECTION]["captive_portal"] = captive_portal
   return _writeData(data)
 
 def getPeriodicDiscoveryEnabled():
   data = _loadData()
-  return data[GLOBAL_CONFG_SECTION]["periodic_discovery"]
+  return data[GLOBAL_CONFG_SECTION].get("periodic_discovery", True)
+
+def getCaptivePortalEnabled():
+  data = _loadData()
+  return data[GLOBAL_CONFG_SECTION].get("captive_portal", False)
 
 def getDeviceProbeEnabled(mac):
   try:

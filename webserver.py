@@ -176,10 +176,13 @@ class WebServerJob(Job):
       # Optional
       active_ping = request.form.get('active_ping') and True
       trigger_activity = request.form.get('trigger_activity') and True
+      policy = request.form.get('policy')
 
-      config.addDevice(mac, custom_name, active_ping, user, trigger_activity, overwrite=overwrite)
+      config.addDevice(mac, custom_name, active_ping, user, trigger_activity, policy, overwrite=overwrite)
+      self.config_changeev.set()
     elif action == "delete":
       config.deleteDevice(mac)
+      self.config_changeev.set()
 
     return redirect(url_for('GET_Devices'), code=303)
 
@@ -202,8 +205,10 @@ class WebServerJob(Job):
         old_username = request.form.get('old_username')
 
       config.addUser(username, avatar, old_username)
+      self.config_changeev.set()
     elif action == "delete":
       config.deleteUser(username)
+      self.config_changeev.set()
 
     return redirect(url_for('GET_People'), code=303)
 
@@ -215,13 +220,16 @@ class WebServerJob(Job):
 
   def POST_Settings(self):
     periodic_discovery = request.form.get('periodic_discovery') and True or False
+    captive_portal = request.form.get('captive_portal') and True or False
 
-    config.setPeriodicDiscoveryEnabled(periodic_discovery)
+    config.updateSettings(periodic_discovery, captive_portal)
+    self.config_changeev.set()
 
     return redirect(url_for('GET_Settings'), code=303)
 
-  def run(self, _, web_msgqueue):
+  def run(self, _, web_msgqueue, config_changeev):
     self.web_msgqueue = web_msgqueue
+    self.config_changeev = config_changeev
     waitress.serve(self.app, port=WEB_PORT, threads=8)
 
 if __name__ == "__main__":

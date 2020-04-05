@@ -22,19 +22,16 @@ import os
 
 from utils.jobs import Job
 from utils.privs import acquire_capabilities
+from utils.data import getDevicePolicy
 import c_modules.pkt_reader as pkt_reader
 import c_modules.nft as nft
+import config
 
 from message import Message
 
 SNIFF_TIMEOUT = 1
-MAC_IDLE_TIMEOUT = 15
-
-# TODO
-SPOOFING_ENABLED = False
-SPOOFING_DEFAULT_SPOOF = False
 SPOOFING_TIMEOUT = 0.5
-SPOOFING_EXCEPTIONS = {}
+SPOOFED_MAC_IDLE_TIMEOUT = 300
 
 class PacketsReaderJob(Job):
   def __init__(self):
@@ -51,18 +48,22 @@ class PacketsReaderJob(Job):
       self.msg_queue.put(msg)
 
   def shouldSpoof(self, mac, ip):
-    if SPOOFING_ENABLED and (mac != self.gateway_mac) and \
+    if (not self.passive_mode) and (mac != self.gateway_mac) and \
         (mac != self.iface_mac) and (mac != "00:00:00:00:00:00") and \
         (ip != "0.0.0.0") and (not self.whitelisted_devices.get(mac)):
-      is_exception = SPOOFING_EXCEPTIONS.get(mac)
 
-      if((SPOOFING_DEFAULT_SPOOF and not is_exception) or
-          (not SPOOFING_DEFAULT_SPOOF and is_exception)):
+      policy = getDevicePolicy(mac)
+
+      if policy != "pass":
+        print("Policy [MAC: %s] -> %s" % (mac, policy))
         return True
 
     return False
 
   def setForwarding(self, enabled):
+    if self.passive_mode:
+      return
+
     # NOTE: packet forwarding is needed to let DNS queries pass.
     # This allows for a faster captive portal detection on client devices
     with open("/proc/sys/net/ipv4/ip_forward", 'w') as f:
@@ -77,12 +78,17 @@ class PacketsReaderJob(Job):
     with open("/proc/sys/net/ipv4/ip_forward", 'r') as f:
       self.forwarding_was_enabled = (f.read(1) == '1')
 
+    # Devices are classified into 3 sets:
+    #  - cp_auth_ok: devices which have passed the captive portal auth
+    #  - cp_whitelisted: devices manually set as "pass" from the gui
+    #  - cp_blacklisted: devices manually set as "block" from the gui
     nft.run("add table ip nat")
     # NOTE: Could use ether_addr sets with "ether saddr" match but the captive_portal
     # does not know MAC addresses
-    nft.run("add set ip nat cp_whitelisted { type ipv4_addr;}")
+    nft.run("add set ip nat cp_auth_ok { type ipv4_addr;}")
+    nft.run("add set ip nat cp_whitelisted { type ether_addr;}")
     nft.run("add chain nat prerouting { type nat hook prerouting priority -100; }")
-    nft.run("add rule nat prerouting iif %s tcp dport { 80 } ip saddr != @cp_whitelisted counter dnat %s:%d" % (
+    nft.run("add rule nat prerouting iif %s tcp dport { 80 } ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted counter dnat %s:%d" % (
       self.options["interface"], self.iface_ip, captive_port))
 
     # Masquerade outgoing traffic
@@ -91,13 +97,62 @@ class PacketsReaderJob(Job):
 
     # Only allow DNS traffic to pass (otherwise captive portal detection on the device won't work)
     nft.run("add table ip filter")
-    nft.run("add set ip filter cp_whitelisted { type ipv4_addr;}")
+    nft.run("add set ip filter cp_auth_ok { type ipv4_addr;}")
+    nft.run("add set ip filter cp_whitelisted { type ether_addr;}")
+    nft.run("add set ip filter cp_blacklisted { type ether_addr;}")
     nft.run("add chain filter forward { type filter hook forward priority 0; }")
+    nft.run("add rule filter forward ether saddr @cp_blacklisted counter drop")
     nft.run("add rule filter forward iif %s udp dport { 53 } counter accept" % (self.options["interface"], ))
-    nft.run("add rule filter forward ip saddr != @cp_whitelisted ct state new counter drop")
+    nft.run("add rule filter forward ct state new ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted counter drop")
 
     if not self.forwarding_was_enabled:
       self.setForwarding(True)
+
+  def reloadExceptions(self):
+    if self.passive_mode:
+      return
+
+    devices = config.getConfiguredDevices()
+    now = time.time()
+
+    nft.run("flush set ip filter cp_whitelisted")
+    nft.run("flush set ip filter cp_blacklisted")
+
+    for mac, mac_info in devices.items():
+      policy = mac_info.get("policy", "default")
+      rearp_mac = False
+      spoof_mac = False
+
+      if policy == "pass":
+        nft.run("add element ip nat cp_whitelisted { %s }" % (mac,))
+        nft.run("add element ip filter cp_whitelisted { %s }" % (mac,))
+        rearp_mac = True
+      elif policy == "block":
+        nft.run("add element ip filter cp_blacklisted { %s }" % (mac,))
+        spoof_mac = True
+      elif policy == "default":
+        applied_policy = getDevicePolicy(mac)
+
+        if applied_policy == "pass":
+          rearp_mac = True
+
+      if rearp_mac:
+        spoofed_mac = self.macs_to_spoof.pop(mac, None)
+
+        if spoofed_mac:
+          # The MAC was spoofed, rearp it
+          pkt_reader.arp_rearp(self.handle, mac, spoofed_mac["ip"])
+      elif spoof_mac and (not self.macs_to_spoof.get(mac)):
+        # Try to find the MAC IP to start blocking it
+        found_ip = None
+
+        for ip, m in self.ip_to_mac.items():
+          if m == mac:
+            found_ip = ip
+            break
+
+        if found_ip:
+          self.macs_to_spoof[mac] = {"last_seen": now, "ip": found_ip}
 
   def termCaptiveNat(self):
     nft.run("delete table ip nat")
@@ -106,9 +161,13 @@ class PacketsReaderJob(Job):
     if not self.forwarding_was_enabled:
       self.setForwarding(False)
 
-  def task(self, msg_queue, cp_eventsqueue):
+  def task(self, msg_queue, cp_eventsqueue, config_changeev, passive_mode):
     self.msg_queue = msg_queue
     self.cp_eventsqueue = cp_eventsqueue
+    self.passive_mode = passive_mode
+    self.config_changeev = config_changeev
+    self.macs_to_spoof = {}
+    self.ip_to_mac = {}
 
     # Acquire capabilities to capture packets
     acquire_capabilities()
@@ -120,35 +179,45 @@ class PacketsReaderJob(Job):
     self.iface_mac = pkt_reader.get_iface_mac(handle)
     self.handle = handle
 
-    if SPOOFING_ENABLED:
+    if(not self.passive_mode):
       print("[IP: %s] [MAC: %s] Gateway %s (%s)" % (self.iface_ip, self.iface_mac, self.gateway_mac, pkt_reader.get_gateway_ip(handle)))
 
-    self.setupCaptiveNat()
+      self.setupCaptiveNat()
+      self.reloadExceptions()
 
-    macs_to_spoof = {}
-    ip_to_mac = {}
     last_request_spoof = 0
 
     while self.isRunning():
       info = pkt_reader.read_packet_info(handle)
       now = time.time()
 
+      # Check for captive portal events
       while cp_eventsqueue[1].poll():
         (msg_type, ip) = cp_eventsqueue[1].recv()
 
         if(msg_type == "auth_ok"):
           # A device was successfully authenticated
-          mac = ip_to_mac.get(ip)
+          mac = self.ip_to_mac.get(ip)
 
           if not mac:
             print("Warning: unknown device with IP: " + ip)
           else:
-            print("Whitelisting device [MAC=%s][IP=%s]" % (mac, ip))
-            self.whitelisted_devices[mac] = True
+            # Verify that the device has actually a captive_portal logic
+            policy = getDevicePolicy(mac)
 
-            # Spoof the device back to the original gateway
-            pkt_reader.arp_rearp(handle, mac, ip)
-            macs_to_spoof.pop(mac, None)
+            if policy == "captive_portal":
+              print("Whitelisting device [MAC=%s][IP=%s]" % (mac, ip))
+              self.whitelisted_devices[mac] = True
+
+              # Spoof the device back to the original gateway
+              pkt_reader.arp_rearp(handle, mac, ip)
+              self.macs_to_spoof.pop(mac, None)
+
+      # Check for config change events
+      if self.config_changeev.is_set():
+        config.reload()
+        self.reloadExceptions()
+        self.config_changeev.clear()
 
       if info:
         name = info.get("name")
@@ -157,32 +226,36 @@ class PacketsReaderJob(Job):
 
         self.handleHost(mac, ip, name, now)
 
+        #print(info)
+
         if self.shouldSpoof(mac, ip):
           if(info.get("proto") == "ARP_REQ"):
             # Immediately spoof the reply
             pkt_reader.arp_rep_spoof(handle, mac, ip)
 
-          macs_to_spoof[mac] = {"last_seen": now, "ip": ip}
-          ip_to_mac[ip] = mac
+          self.macs_to_spoof[mac] = {"last_seen": now, "ip": ip}
+
+        self.ip_to_mac[ip] = mac
 
       if((now - last_request_spoof) >= SPOOFING_TIMEOUT):
         idle_macs = []
 
-        for mac, mac_info in macs_to_spoof.items():
-          if((now - mac_info["last_seen"]) < MAC_IDLE_TIMEOUT):
+        for mac, mac_info in self.macs_to_spoof.items():
+          if((now - mac_info["last_seen"]) < SPOOFED_MAC_IDLE_TIMEOUT):
             pkt_reader.arp_req_spoof(handle, mac, mac_info["ip"])
           else:
             idle_macs.append(mac)
 
         for mac in idle_macs:
-          macs_to_spoof.pop(mac, None)
+          self.macs_to_spoof.pop(mac, None)
 
         last_request_spoof = now
 
     # Spoof the devices back to the original gateway
-    for mac, mac_info in macs_to_spoof.items():
+    for mac, mac_info in self.macs_to_spoof.items():
       pkt_reader.arp_rearp(handle, mac, mac_info["ip"])
 
-    self.termCaptiveNat()
+    if not self.passive_mode:
+      self.termCaptiveNat()
 
     pkt_reader.close_capture_dev(handle)
