@@ -6,3 +6,4 @@ __pycache__
 c_modules/pkt_reader
 config.json
 data/
+creds.txt

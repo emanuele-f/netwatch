@@ -18,10 +18,10 @@ arp_scanner.o: arp_scanner.c
 	gcc -g -Wall -fPIC `pkg-config --cflags python3` -c arp_scanner.c -o arp_scanner.o
 
 arp_scanner.so: arp_scanner.o
-	gcc -shared arp_scanner.o -o arp_scanner.so -ldnet `pkg-config --libs python3`
+	gcc -shared arp_scanner.o -o arp_scanner.so -lpcap `pkg-config --libs python3`
 
 arp_scanner: arp_scanner.o
-	gcc -g arp_scanner.o -o arp_scanner -ldnet `pkg-config --libs python3`
+	gcc -g arp_scanner.o -o arp_scanner -lpcap `pkg-config --libs python3`
 
 nft.o: nft.c
 	gcc -g -Wall -fPIC `pkg-config --cflags python3` -c nft.c -o nft.o

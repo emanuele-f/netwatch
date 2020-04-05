@@ -26,6 +26,8 @@
 #include <fcntl.h>
 #include <nftables/libnftables.h>
 
+#include "netutils.c"
+
 /* ************************************************************ */
 
 /* NOTE: directly running nft with os.execute won't work because of
@@ -49,25 +51,6 @@ static PyObject *run_nft_cmd(PyObject *self, PyObject *args) {
 
   nft_ctx_free(nft);
   Py_RETURN_TRUE;
-}
-
-/* ************************************************************ */
-
-static int get_interface_ip_address(const char *iface, uint32_t *ip) {
-  struct ifreq ifr;
-  int fd;
-  int rv;
-
-  fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-  ifr.ifr_addr.sa_family = AF_INET;
-  strncpy((char *)ifr.ifr_name, iface, IFNAMSIZ-1);
-
-  if((rv = ioctl(fd, SIOCGIFADDR, &ifr)) != -1)
-    *ip = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
-
-  close(fd);
-  return(rv);
 }
 
 /* ************************************************************ */

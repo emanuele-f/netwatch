@@ -41,64 +41,69 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <dnet.h>
+#include <pcap.h>
 
-struct ether_arp {
-  struct arp_hdr arp_hdr;
-  struct arp_ethip arp_ethip;
-};
+#define SNAPLEN 1024
+#define PROMISC 1
+
+#include "headers.h"
+#include "netutils.c"
 
 typedef struct working_data {
   u_int32_t my_ipaddr;
   uint8_t my_ethaddr[6];
-  eth_t *eth;
+  pcap_t *handle;
 } working_data;
 
-static void _init_dnet(working_data *wdata, const char *dev_name) {
-  intf_t *dnet_if;
-  struct intf_entry entry;
+static int _init_dnet(working_data *wdata, const char *dev_name) {
+  char errbuf[PCAP_ERRBUF_SIZE];
 
-  dnet_if = intf_open();
-  memset(&entry, 0, sizeof(entry));
-  strncpy(entry.intf_name, dev_name, INTF_NAME_LEN - 1);
-  intf_get(dnet_if, &entry);
-  memcpy(&wdata->my_ipaddr, &entry.intf_addr.addr_ip, sizeof(u_int32_t));
-  memcpy(&wdata->my_ethaddr, &entry.intf_link_addr.addr_eth, sizeof(wdata->my_ethaddr));
-  intf_close(dnet_if);
+  wdata->handle = pcap_open_live(dev_name, SNAPLEN, PROMISC, 0, errbuf);
 
-  wdata->eth = eth_open(dev_name);
+  // Interface IP
+  if(get_interface_ip_address(dev_name, &wdata->my_ipaddr) == -1) {
+    fprintf(stderr, "Could not get interface %s IP address\n", dev_name);
+    return(-1);
+  }
+
+  // Interface MAC
+  if(get_interface_mac_address(dev_name, wdata->my_ethaddr) == -1) {
+    fprintf(stderr, "Could not get interface %s MAC address\n", dev_name);
+    return(-2);
+  }
+
+  if(wdata->handle == NULL) {
+    fprintf(stderr, "Couldn't open device %s: %s\n", dev_name, errbuf);
+    return(-3);
+  }
+
+  return(0);
 }
 
 static void _finish_dnet(working_data *wdata) {
-  eth_close(wdata->eth);
+  pcap_close(wdata->handle);
 }
 
 static void _send_arp(working_data *wdata, u_int32_t ip) {
-  eth_t *eth = wdata->eth;
-  struct eth_hdr eth_header;
-  u_char pkt[sizeof(struct eth_hdr) + sizeof(struct ether_arp)];
-  struct ether_arp *arp;
+  struct arppkt pkt;
 
-  memset(&eth_header.eth_dst, 0xff, sizeof(eth_header.eth_dst));
-  memcpy(&eth_header.eth_src, wdata->my_ethaddr, sizeof(wdata->my_ethaddr));
-  eth_header.eth_type = htons(ETH_TYPE_ARP);
+  memset(&pkt, 0, sizeof(pkt));
 
-  memset(pkt, 0, sizeof(pkt));
-  memcpy(pkt, &eth_header, sizeof(eth_header));
+  memset(&pkt.dst_mac, 0xff, sizeof(pkt.dst_mac));
+  memcpy(&pkt.src_mac, wdata->my_ethaddr, sizeof(wdata->my_ethaddr));
+  pkt.proto = htons(ETH_P_ARP);
 
-  arp = (struct ether_arp *)(pkt + sizeof(struct eth_hdr));
-  arp->arp_hdr.ar_hrd = htons(ARP_HRD_ETH);
-  arp->arp_hdr.ar_pro = htons(ETH_TYPE_IP);
-  arp->arp_hdr.ar_hln = ETH_ADDR_LEN;
-  arp->arp_hdr.ar_pln = sizeof(ip);
-  arp->arp_hdr.ar_op = htons(ARP_OP_REQUEST);
+  pkt.arph.htype = htons(HARDWARE_TYPE_ETHERNET);
+  pkt.arph.ptype = htons(PROTOCOL_TYPE_IP);
+  pkt.arph.hlen = ETH_ALEN;
+  pkt.arph.plen = sizeof(ip);
+  pkt.arph.oper = htons(ARP_REQUEST);
 
-  memcpy(&arp->arp_ethip.ar_sha, &eth_header.eth_src,
-      sizeof(eth_header.eth_src));
-  memcpy(&arp->arp_ethip.ar_spa, &wdata->my_ipaddr, sizeof(u_int32_t));
-  memcpy(&arp->arp_ethip.ar_tpa, &ip, sizeof(u_int32_t));
+  memcpy(&pkt.arph.sha, &pkt.src_mac, sizeof(pkt.src_mac));
+  memcpy(&pkt.arph.spa, &wdata->my_ipaddr, sizeof(u_int32_t));
+  memcpy(&pkt.arph.tpa, &ip, sizeof(u_int32_t));
 
-  eth_send(eth, (void *)pkt, sizeof(pkt));
+  pcap_sendpacket(wdata->handle, (u_char*)&pkt, sizeof(pkt));
 }
 
 static void _arp_scan(working_data *data, u_int32_t first_ip, u_int32_t last_ip) {
@@ -177,8 +182,7 @@ static PyObject *init_scanner(PyObject *self, PyObject *args) {
   handle = (working_data *) calloc(1, sizeof(working_data));
   if (!handle) return NULL;
 
-  _init_dnet(handle, devname);
-  if (handle->eth == NULL) {
+  if(_init_dnet(handle, devname) != 0) {
     free(handle);
     return NULL;
   }
