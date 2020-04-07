@@ -117,8 +117,8 @@ class WebServerJob(Job):
   @check_auth
   def GET_Timeline(self):
     # TODO handle now
-    timestamp = request.args.get('username', "now")
-    resolution = request.args.get('password', "1m")
+    timestamp = request.args.get('ts', "now")
+    resolution = request.args.get('res', "1h")
 
     presence_db = PresenceDB()
     meta_db = MetaDB()
