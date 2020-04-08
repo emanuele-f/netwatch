@@ -54,7 +54,7 @@ class PacketsReaderJob(Job):
 
       policy = getDevicePolicy(mac)
 
-      if(policy == "block") or (policy == "captive_portal"):
+      if(policy == "block") or (policy == "captive_portal") or (policy == "capture"):
         print("Policy [MAC: %s] -> %s" % (mac, policy))
         return True
 
@@ -80,7 +80,7 @@ class PacketsReaderJob(Job):
 
     # Devices are classified into 3 sets:
     #  - cp_auth_ok: devices which have passed the captive portal auth
-    #  - cp_whitelisted: devices manually set as "pass" from the gui
+    #  - cp_whitelisted: devices manually set as "pass" from the gui (or "capture")
     #  - cp_blacklisted: devices manually set as "block" from the gui
     nft.run("add table ip nat")
     # NOTE: Could use ether_addr sets with "ether saddr" match but the captive_portal
@@ -126,10 +126,12 @@ class PacketsReaderJob(Job):
       rearp_mac = False
       spoof_mac = False
 
-      if policy == "pass":
+      if((policy == "pass") or (policy == "capture")):
         nft.run("add element ip nat cp_whitelisted { %s }" % (mac,))
         nft.run("add element ip filter cp_whitelisted { %s }" % (mac,))
-        rearp_mac = True
+
+        if(policy == "pass"):
+          rearp_mac = True
       elif policy == "block":
         nft.run("add element ip nat cp_blacklisted { %s }" % (mac,))
         nft.run("add element ip filter cp_blacklisted { %s }" % (mac,))
