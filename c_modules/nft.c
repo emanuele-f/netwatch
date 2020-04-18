@@ -44,7 +44,12 @@ static PyObject *run_nft_cmd(PyObject *self, PyObject *args) {
     return NULL;
   }
 
-  if(nft_run_cmd_from_buffer(nft, cmd)) {
+#if 1
+  if(nft_run_cmd_from_buffer(nft, cmd))
+#else
+  if(nft_run_cmd_from_buffer(nft, (char*)cmd, strlen(cmd)))
+#endif
+{
     nft_ctx_free(nft);
     Py_RETURN_FALSE;
   }
