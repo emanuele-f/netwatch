@@ -69,6 +69,37 @@ class PacketsReaderJob(Job):
     with open("/proc/sys/net/ipv4/ip_forward", 'w') as f:
       f.write('1' if enabled else '0')
 
+  def initNftables(self):
+    nft.run("add table ip nat")
+    nft.run("add table ip filter")
+
+    # Chains are marked with the "nw_" prefix to identify them
+    nft.run("add chain ip nat nw_prerouting { type nat hook prerouting priority -100; }")
+    nft.run("add chain ip nat nw_postrouting { type nat hook postrouting priority -100; }")
+    nft.run("add chain ip filter nw_forward { type filter hook forward priority 0; }")
+
+    nft.run("add set ip nat cp_auth_ok { type ipv4_addr;}")
+    nft.run("add set ip nat cp_whitelisted { type ether_addr;}")
+    nft.run("add set ip nat cp_blacklisted { type ether_addr;}")
+
+    nft.run("add set ip filter cp_auth_ok { type ipv4_addr;}")
+    nft.run("add set ip filter cp_whitelisted { type ether_addr;}")
+    nft.run("add set ip filter cp_blacklisted { type ether_addr;}")
+
+  def termNftables(self):
+    # NOTE: don't delete tables as rules from other programs may be present
+    nft.run("delete chain ip nat nw_prerouting")
+    nft.run("delete chain ip nat nw_postrouting")
+    nft.run("delete chain ip filter nw_forward")
+
+    nft.run("delete set ip nat cp_auth_ok")
+    nft.run("delete set ip nat cp_whitelisted")
+    nft.run("delete set ip nat cp_blacklisted")
+
+    nft.run("delete set ip filter cp_auth_ok")
+    nft.run("delete set ip filter cp_whitelisted")
+    nft.run("delete set ip filter cp_blacklisted")
+
   def setupCaptiveNat(self):
     # TODO
     captive_port = 9000
@@ -78,33 +109,24 @@ class PacketsReaderJob(Job):
     with open("/proc/sys/net/ipv4/ip_forward", 'r') as f:
       self.forwarding_was_enabled = (f.read(1) == '1')
 
+    self.initNftables()
+
     # Devices are classified into 3 sets:
     #  - cp_auth_ok: devices which have passed the captive portal auth
     #  - cp_whitelisted: devices manually set as "pass" from the gui (or "capture")
     #  - cp_blacklisted: devices manually set as "block" from the gui
-    nft.run("add table ip nat")
     # NOTE: Could use ether_addr sets with "ether saddr" match but the captive_portal
     # does not know MAC addresses
-    nft.run("add set ip nat cp_auth_ok { type ipv4_addr;}")
-    nft.run("add set ip nat cp_whitelisted { type ether_addr;}")
-    nft.run("add set ip nat cp_blacklisted { type ether_addr;}")
-    nft.run("add chain nat prerouting { type nat hook prerouting priority -100; }")
-    nft.run("add rule nat prerouting iif %s tcp dport { 80 } ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted ether saddr != @cp_blacklisted counter dnat %s:%d" % (
+    nft.run("add rule nat nw_prerouting iif %s tcp dport { 80 } ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted ether saddr != @cp_blacklisted counter dnat %s:%d" % (
       self.options["interface"], self.iface_ip, captive_port))
 
     # Masquerade outgoing traffic
-    nft.run("add chain nat postrouting { type nat hook postrouting priority -100; }")
-    nft.run("add rule nat postrouting oif %s counter masquerade" % (self.options["interface"], ))
+    nft.run("add rule nat nw_postrouting oif %s counter masquerade" % (self.options["interface"], ))
 
     # Only allow DNS traffic to pass (otherwise captive portal detection on the device won't work)
-    nft.run("add table ip filter")
-    nft.run("add set ip filter cp_auth_ok { type ipv4_addr;}")
-    nft.run("add set ip filter cp_whitelisted { type ether_addr;}")
-    nft.run("add set ip filter cp_blacklisted { type ether_addr;}")
-    nft.run("add chain filter forward { type filter hook forward priority 0; }")
-    nft.run("add rule filter forward ether saddr @cp_blacklisted counter drop")
-    nft.run("add rule filter forward iif %s udp dport { 53 } counter accept" % (self.options["interface"], ))
-    nft.run("add rule filter forward ct state new ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted counter drop")
+    nft.run("add rule filter nw_forward ether saddr @cp_blacklisted counter drop")
+    nft.run("add rule filter nw_forward iif %s udp dport { 53 } counter accept" % (self.options["interface"], ))
+    nft.run("add rule filter nw_forward iif %s ct state new ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted counter drop" % (self.options["interface"], ))
 
     if not self.forwarding_was_enabled:
       self.setForwarding(True)
@@ -161,8 +183,7 @@ class PacketsReaderJob(Job):
           self.macs_to_spoof[mac] = {"last_seen": now, "ip": found_ip}
 
   def termCaptiveNat(self):
-    nft.run("delete table ip nat")
-    nft.run("delete table ip filter")
+    self.termNftables()
 
     if not self.forwarding_was_enabled:
       self.setForwarding(False)
