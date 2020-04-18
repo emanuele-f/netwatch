@@ -21,7 +21,7 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 
-static int get_interface_ip_address(const char *iface, uint32_t *ip) {
+static int get_interface_ip_address(const char *iface, uint32_t *ip, uint32_t *netmask) {
   struct ifreq ifr;
   int fd;
   int rv;
@@ -31,8 +31,12 @@ static int get_interface_ip_address(const char *iface, uint32_t *ip) {
   ifr.ifr_addr.sa_family = AF_INET;
   strncpy((char *)ifr.ifr_name, iface, IFNAMSIZ-1);
 
-  if((rv = ioctl(fd, SIOCGIFADDR, &ifr)) != -1)
+  if((rv = ioctl(fd, SIOCGIFADDR, &ifr)) != -1) {
     *ip = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+
+    if((rv = ioctl(fd, SIOCGIFNETMASK, &ifr)) != -1)
+      *netmask = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+  }
 
   close(fd);
   return(rv);
@@ -55,4 +59,19 @@ static int get_interface_mac_address(const char *iface, u_char *mac) {
 
   close(fd);
   return(rv);
+}
+
+/* ************************************************************ */
+
+static int netmask_2_prefix(uint32_t netmask) {
+  int i=32;
+
+  netmask = ntohl(netmask);
+
+  while((netmask > 0) && !(netmask & 1)) {
+    i--;
+    netmask >>= 1;
+  }
+
+  return(i);
 }

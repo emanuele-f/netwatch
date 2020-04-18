@@ -50,18 +50,19 @@
 #include "netutils.c"
 
 typedef struct working_data {
-  u_int32_t my_ipaddr;
+  uint32_t my_ipaddr;
   uint8_t my_ethaddr[6];
   pcap_t *handle;
 } working_data;
 
 static int _init_dnet(working_data *wdata, const char *dev_name) {
   char errbuf[PCAP_ERRBUF_SIZE];
+  uint32_t netmask;
 
   wdata->handle = pcap_open_live(dev_name, SNAPLEN, PROMISC, 0, errbuf);
 
   // Interface IP
-  if(get_interface_ip_address(dev_name, &wdata->my_ipaddr) == -1) {
+  if(get_interface_ip_address(dev_name, &wdata->my_ipaddr, &netmask) == -1) {
     fprintf(stderr, "Could not get interface %s IP address\n", dev_name);
     return(-1);
   }

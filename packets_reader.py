@@ -117,16 +117,16 @@ class PacketsReaderJob(Job):
     #  - cp_blacklisted: devices manually set as "block" from the gui
     # NOTE: Could use ether_addr sets with "ether saddr" match but the captive_portal
     # does not know MAC addresses
-    nft.run("add rule nat nw_prerouting iif %s tcp dport { 80 } ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted ether saddr != @cp_blacklisted counter dnat %s:%d" % (
-      self.options["interface"], self.iface_ip, captive_port))
+    nft.run("add rule nat nw_prerouting iif %s tcp dport { 80 } ip saddr %s ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted ether saddr != @cp_blacklisted counter dnat %s:%d" % (
+      self.options["interface"], self.lan_network, self.iface_ip, captive_port))
 
     # Masquerade outgoing traffic
-    nft.run("add rule nat nw_postrouting oif %s counter masquerade" % (self.options["interface"], ))
+    nft.run("add rule nat nw_postrouting oif %s ip saddr %s counter masquerade" % (self.options["interface"], self.lan_network))
 
     # Only allow DNS traffic to pass (otherwise captive portal detection on the device won't work)
     nft.run("add rule filter nw_forward ether saddr @cp_blacklisted counter drop")
-    nft.run("add rule filter nw_forward iif %s udp dport { 53 } counter accept" % (self.options["interface"], ))
-    nft.run("add rule filter nw_forward iif %s ct state new ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted counter drop" % (self.options["interface"], ))
+    nft.run("add rule filter nw_forward iif %s ip saddr %s udp dport { 53 } counter accept" % (self.options["interface"], self.lan_network))
+    nft.run("add rule filter nw_forward iif %s ct state new ip saddr %s ip saddr != @cp_auth_ok ether saddr != @cp_whitelisted counter drop" % (self.options["interface"], self.lan_network))
 
     if not self.forwarding_was_enabled:
       self.setForwarding(True)
@@ -204,10 +204,11 @@ class PacketsReaderJob(Job):
     self.gateway_mac = pkt_reader.get_gateway_mac(handle)
     self.iface_ip = pkt_reader.get_iface_ip(handle)
     self.iface_mac = pkt_reader.get_iface_mac(handle)
+    self.lan_network = pkt_reader.get_lan_network(handle)
     self.handle = handle
 
     if(not self.passive_mode):
-      print("[IP: %s] [MAC: %s] Gateway %s (%s)" % (self.iface_ip, self.iface_mac, self.gateway_mac, pkt_reader.get_gateway_ip(handle)))
+      print("[NET:%s] [IP: %s] [MAC: %s] Gateway %s (%s)" % (self.lan_network, self.iface_ip, self.iface_mac, self.gateway_mac, pkt_reader.get_gateway_ip(handle)))
 
       self.setupCaptiveNat()
       self.reloadExceptions()

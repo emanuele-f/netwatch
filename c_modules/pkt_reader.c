@@ -51,6 +51,8 @@ typedef struct {
   pcap_t *handle;
   u_char iface_mac[6];
   u_char gateway_mac[6];
+  char lan_network[64];
+  uint32_t lan_netmask;
   uint32_t iface_ip;
   uint32_t gateway_ip;
 } pkt_readerObject;
@@ -413,6 +415,7 @@ static PyObject *open_capture_dev(PyObject *self, PyObject *args) {
   int immediate_mode;
   int rv;
   pcap_t *handle;
+  struct in_addr addr;
 
   if (!PyArg_ParseTuple(args, "sisb", &devname, &read_timeout, &filter_exp, &immediate_mode))
     return NULL;
@@ -427,7 +430,7 @@ static PyObject *open_capture_dev(PyObject *self, PyObject *args) {
   reader->handle = handle;
 
   // Interface IP
-  if((rv = get_interface_ip_address(devname, &reader->iface_ip)) == -1) {
+  if((rv = get_interface_ip_address(devname, &reader->iface_ip, &reader->lan_netmask)) == -1) {
     fprintf(stderr, "Could not get interface %s IP address [%d]\n", devname, rv);
     return NULL;
   }
@@ -437,6 +440,11 @@ static PyObject *open_capture_dev(PyObject *self, PyObject *args) {
     fprintf(stderr, "Could not get interface %s MAC address [%d]\n", devname, rv);
     return NULL;
   }
+
+  // Lan Network
+  addr.s_addr = reader->iface_ip & reader->lan_netmask;
+  snprintf(reader->lan_network, sizeof(reader->lan_network), "%s/%d",
+    inet_ntoa(addr), netmask_2_prefix(reader->lan_netmask));
 
   // Gateway information
   if((rv = get_gateway_info(&reader->gateway_ip, reader->gateway_mac)) != 0) {
@@ -585,6 +593,17 @@ static PyObject *get_gateway_ip(PyObject *self, PyObject *args) {
 
 /* ************************************************************ */
 
+static PyObject *get_lan_network(PyObject *self, PyObject *args) {
+  pkt_readerObject *reader;
+
+  if(!PyArg_ParseTuple(args, "O", &reader))
+    return NULL;
+
+  return PyUnicode_FromString(reader->lan_network);
+}
+
+/* ************************************************************ */
+
 static PyMethodDef PktReaderMethods[] = {
   {"open_capture_dev",  open_capture_dev, METH_VARARGS, "Open a device for capture."},
   {"close_capture_dev", close_capture_dev, METH_VARARGS, "Closes a devices capture."},
@@ -596,6 +615,7 @@ static PyMethodDef PktReaderMethods[] = {
   {"get_iface_mac", get_iface_mac, METH_VARARGS, "Get the interface MAC address"},
   {"get_gateway_mac", get_gateway_mac, METH_VARARGS, "Get the gateway MAC address"},
   {"get_gateway_ip", get_gateway_ip, METH_VARARGS, "Get the gateway IP address"},
+  {"get_lan_network", get_lan_network, METH_VARARGS, "Get the LAN network in CIDR format"},
   {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 

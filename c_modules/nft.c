@@ -58,11 +58,12 @@ static PyObject *run_nft_cmd(PyObject *self, PyObject *args) {
 static PyObject *get_iface_ip(PyObject *self, PyObject *args) {
   const char *iface;
   struct in_addr addr;
+  uint32_t netmask;
 
   if (!PyArg_ParseTuple(args, "s", &iface))
     return NULL;
 
-  if(get_interface_ip_address(iface, &addr.s_addr) != -1)
+  if(get_interface_ip_address(iface, &addr.s_addr, &netmask) != -1)
     return PyUnicode_FromString(inet_ntoa(addr));
 
   Py_RETURN_NONE;
