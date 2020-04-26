@@ -50,6 +50,7 @@ class CaptivePortalJob(Job):
     self.app.route('/login_ok', methods=['GET'])(self.GET_LoginOk)
     self.app.route('/static/<path:path>', methods=['GET'])(self.GET_Static)
     self.app.route('/<path:path>', methods=['GET'])(self.catch_all)
+    self.app.route('/', methods=['GET'])(self.catch_all)
 
   def get_login_url(self, url):
     # NOTE: it is better to redirect to the host in order to avoid confusing
@@ -107,7 +108,7 @@ class CaptivePortalJob(Job):
   def NotFound(self):
     abort(404)
 
-  def catch_all(self, path):
+  def catch_all(self, path='/'):
     #response = Response(html_data, 302, mimetype="text/html")
     #response.headers["Location"] = login_url
     #return response
