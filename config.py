@@ -23,6 +23,7 @@ CONFIG_FILE = "data/config.json"
 DEVICES_CONFIG_SECTION = "devices"
 USERS_CONFIG_SECTION = "users"
 GLOBAL_CONFG_SECTION = "global"
+MAX_HOST_IDLE_SEC = 300
 
 data = None
 

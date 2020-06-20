@@ -46,14 +46,8 @@ presence_db = None
 meta_db = None
 scanner_msgqueue = None
 web_msgqueue = None
-
-# Host which where active during the last time slot
-prev_hosts = {}
-
-# Host which are active during this time slot
-next_hosts = {}
-
 manager = None
+seen_hosts = {}
 
 # ------------------------------------------------------------------------------
 
@@ -68,6 +62,12 @@ class HostInfo():
   def update(self, last_seen, name=None):
     self.last_seen = last_seen
     if name: self.name = name
+
+  def isBecomingIdle(self, now):
+    return (not self.isIdle(now)) and ((now - self.last_seen) >= (TIME_SLOT - 10))
+
+  def isIdle(self, now):
+    return ((now - self.last_seen) >= config.MAX_HOST_IDLE_SEC)
 
 class MessageParser():
   def __init__(self, msg):
@@ -118,36 +118,33 @@ def initSignals():
 # ------------------------------------------------------------------------------
 
 def handleHost(mac, ip, seen_tstamp, host_name):
-  global prev_hosts
-  global next_hosts
+  global seen_hosts
 
   try:
-    host = next_hosts[mac]
+    host = seen_hosts[mac]
     host.update(seen_tstamp, host_name)
   except KeyError:
-    try:
-      host = prev_hosts[mac]
-      host.update(seen_tstamp)
-    except KeyError:
-      host = HostInfo(mac, ip, seen_tstamp, host_name)
-      log.info("[+]" + mac)
+    host = HostInfo(mac, ip, seen_tstamp, host_name)
+    log.info("[+]" + mac)
 
-  next_hosts[mac] = host
+  seen_hosts[mac] = host
 
 def datetimeToTimestamp(dt):
   return int((time.mktime(dt.timetuple()) + dt.microsecond/1000000.0))
 
-def insertHostsDataPoint(time_ref):
+def insertHostsDataPoint(time_ref, now):
   global presence_db
   global meta_db
-  global next_hosts
+  global seen_hosts
+  active_devices = []
 
-  devices = next_hosts.keys()
-  log.debug("Insert datapoint: @" + str(time_ref) + ": " + str(len(devices)) + " devices")
-  presence_db.insert(time_ref, devices)
+  for host in seen_hosts.values():
+    if not host.isIdle(now):
+      active_devices.append(host.mac)
+      meta_db.update(host.mac, int(host.last_seen), name=host.name, ip=host.ip)
 
-  for host in next_hosts.values():
-    meta_db.update(host.mac, int(host.last_seen), name=host.name, ip=host.ip)
+  log.debug("Insert datapoint: @" + str(time_ref) + ": " + str(len(active_devices)) + " devices")
+  presence_db.insert(time_ref, active_devices)
 
 def guessMainInterface():
   output = subprocess.check_output(['ip', '-4', 'route', 'list', '0/0'])
@@ -164,10 +161,15 @@ def guessMainInterface():
 
   return ""
 
+def processDevicesUpdates():
+  # NOTE: devices updates are received when the jobs call self.msg_queue.put
+
+  for message in manager.getMessages():
+      handleHost(message.mac, message.ip, message.seen_tstamp, message.host_name)
+
 def mainLoop():
   global running
-  global prev_hosts
-  global next_hosts
+  global seen_hosts
 
   now = int(time.time())
   prev_slot = now - (now % TIME_SLOT)
@@ -187,9 +189,7 @@ def mainLoop():
           except QueueEmpty:
             break
 
-      insertHostsDataPoint(prev_slot)
-      prev_hosts = next_hosts
-      next_hosts = {}
+      insertHostsDataPoint(prev_slot, now)
       prev_slot = now - (now % TIME_SLOT)
       next_slot = prev_slot + TIME_SLOT
       poke_time = next_slot - REMAINING_BEFORE_POKE
@@ -202,20 +202,17 @@ def mainLoop():
           scanner_msgqueue.put("net_scan")
           log.debug("Peridoc ARP scan queued")
       else:
-        for host in prev_hosts:
-          try:
-            h = next_hosts[host]
-          except KeyError:
-            max_time = next_slot - now - 1
-            if (max_time >= 5) and (config.getDeviceProbeEnabled(prev_hosts[host].mac)):
-              host = prev_hosts[host].ip
-              if scanner_msgqueue:
-                scanner_msgqueue.put(host)
-                log.debug("Host " + host + " ARP scan queued")
+        max_time = next_slot - now - 1
+
+        if(max_time >= 5) and scanner_msgqueue:
+          for h in seen_hosts.values():
+            if h.isBecomingIdle(now) and config.getDeviceProbeEnabled(h.mac):
+              scanner_msgqueue.put(h.ip)
+              log.debug("Host " + h.ip + " ARP scan queued")
+
       poke_started = True
 
-    for message in manager.getMessages():
-      handleHost(message.mac, message.ip, message.seen_tstamp, message.host_name)
+    processDevicesUpdates()
 
     now = int(time.time())
 
@@ -228,9 +225,9 @@ def mainLoop():
       if has_msg:
         msg = web_msgqueue[1].recv()
 
-        if msg == "get_active_devices":
-          to_dump = {**prev_hosts, **next_hosts}
-          web_msgqueue[1].send(pickle.dumps(to_dump))
+        if msg == "get_seen_devices":
+          processDevicesUpdates()
+          web_msgqueue[1].send(pickle.dumps(seen_hosts))
 
 def dropPrivileges(drop_user, drop_group):
   if os.getuid() != 0:

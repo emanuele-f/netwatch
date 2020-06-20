@@ -20,10 +20,8 @@ import time, datetime
 
 import config
 
-MAX_TIME_TO_BE_INACTIVE = 300
-
 def isActiveDevice(metadata):
-  return (time.time() - metadata["last_seen"]) <= MAX_TIME_TO_BE_INACTIVE 
+  return (time.time() - metadata["last_seen"]) <= config.MAX_HOST_IDLE_SEC
 
 def countActiveUserDevices(devices_list, meta_db):
   count = 0

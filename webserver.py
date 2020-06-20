@@ -173,7 +173,7 @@ class WebServerJob(Job):
       meta_db = MetaDB()
       return jsonify(getDevicesData(meta_db))
     else:
-      self.web_msgqueue[0].send("get_active_devices")
+      self.web_msgqueue[0].send("get_seen_devices")
       known_macs = config.getConfiguredDevices().keys()
 
       # Avoid infinite wait
@@ -182,10 +182,10 @@ class WebServerJob(Job):
       if not has_message:
         return jsonify([])
 
-      active_devices = pickle.loads(self.web_msgqueue[0].recv())
+      seen_devices = pickle.loads(self.web_msgqueue[0].recv())
       rv = []
 
-      for mac, hostinfo in active_devices.items():
+      for mac, hostinfo in seen_devices.items():
         if not mac in known_macs:
           rv.append({
             "mac": mac,
